@@ -212,6 +212,20 @@ export default function App() {
           <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, letterSpacing: "0.08em", color: "#fff" }}>
             CHORD EXPLORER
           </h1>
+          <a
+            href="https://buymeacoffee.com/YOUR_USERNAME"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 5,
+              background: "#FFDD00", color: "#000", fontFamily: "inherit",
+              fontWeight: 700, fontSize: 11, letterSpacing: "0.05em",
+              padding: "4px 10px", borderRadius: 6, textDecoration: "none",
+              border: "none", cursor: "pointer", flexShrink: 0,
+            }}
+          >
+            ☕ Buy me a coffee
+          </a>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {[["Click","play"],["Right-click","add"],["Drag","timeline"],["Space","play/stop"]].map(([k,d]) => (
               <span key={k} style={{ fontSize: 11, color: TEXT.secondary, whiteSpace: "nowrap" }}>
