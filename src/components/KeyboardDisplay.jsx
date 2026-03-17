@@ -31,7 +31,8 @@ export function KeyboardDisplay({
   onNoteClick,
   selectedChordName,
   selectedChordColor,
-  keyboardActiveNotes = new Set(),
+  keyboardActiveNotes = new Set(),  // Set of "pc-oct" strings
+  activeNoteCount = 0,
   recognizedChord = null,
   recognizedChordColor,
   onClearKeyboardNotes,
@@ -49,13 +50,13 @@ export function KeyboardDisplay({
   // Key color priority: played > active (recognition) > selected (chord grid) > default
   function whiteKeyBg(note, oct) {
     if (isPlayedPitchWithOct(NOTE_TO_PC[note], oct)) return "#ffcf66"
-    if (keyboardActiveNotes.has(NOTE_TO_PC[note])) return "#6ee7b7"
+    if (keyboardActiveNotes.has(`${NOTE_TO_PC[note]}-${oct}`)) return "#6ee7b7"
     if (isSelectedPitchWithOct(NOTE_TO_PC[note], oct)) return "#9fd3ff"
     return "#e4e4e4"
   }
   function blackKeyBg(note, oct) {
     if (isPlayedPitchWithOct(NOTE_TO_PC[note], oct)) return "#ffb933"
-    if (keyboardActiveNotes.has(NOTE_TO_PC[note])) return "#34d399"
+    if (keyboardActiveNotes.has(`${NOTE_TO_PC[note]}-${oct}`)) return "#34d399"
     if (isSelectedPitchWithOct(NOTE_TO_PC[note], oct)) return "#3b82f6"
     return "#1a1a1a"
   }
@@ -84,7 +85,7 @@ export function KeyboardDisplay({
               </button>
             ) : (
               <span style={{ fontSize: 11, color: TEXT.muted }}>
-                {keyboardActiveNotes.size} note{keyboardActiveNotes.size > 1 ? "s" : ""}…
+                {activeNoteCount} note{activeNoteCount !== 1 ? "s" : ""}…
               </span>
             )}
             <button

@@ -12,8 +12,8 @@ export function useAudio({ soundRef, onNotesPlayed, onNotesClear }) {
   }
 
   const playChord = useCallback(async (chord) => {
-    const { sustain, intensity, reverb, spread } = soundRef.current
-    const midiNotes = await getEngine().play(chord, { sustain, intensity, reverb, spread })
+    const { sustain, intensity, spread } = soundRef.current
+    const midiNotes = await getEngine().play(chord, { sustain, intensity, spread })
     // Pass {pc, oct} objects so the keyboard can highlight per octave
     const noteObjs = midiNotes.map(midi => ({
       pc:  midiToPitchClass(midi),

@@ -11,6 +11,10 @@ export function useTimeline() {
     setProgression(prev => [...prev, { id, ...chord }])
   }
 
+  function updateEntry(id, updates) {
+    setProgression(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e))
+  }
+
   function removeChord(index) {
     setProgression(prev => prev.filter((_, i) => i !== index))
   }
@@ -100,6 +104,7 @@ export function useTimeline() {
     dragOverIndex,
     timelineDropActive,
     addChord,
+    updateEntry,
     removeChord,
     clear,
     loadProgression,

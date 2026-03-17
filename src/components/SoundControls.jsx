@@ -4,7 +4,6 @@ const CONTROLS = [
   { key: "tempo",     label: "Tempo",   min: 40,   max: 240,  step: 1,     fmt: v => `${v} bpm` },
   { key: "sustain",   label: "Sustain", min: 0.3,  max: 4,    step: 0.05,  fmt: v => `${v.toFixed(1)}s` },
   { key: "intensity", label: "Vol",     min: 0.1,  max: 1.4,  step: 0.05,  fmt: v => `${Math.round(v * 100 / 1.4)}%` },
-  { key: "reverb",    label: "Reverb",  min: 0,    max: 0.8,  step: 0.02,  fmt: v => `${Math.round(v * 100 / 0.8)}%` },
   { key: "spread",    label: "Strum",   min: 0,    max: 0.08, step: 0.002, fmt: v => `${Math.round(v * 1000)}ms` },
 ]
 

@@ -21,6 +21,7 @@ export function TimelineChip({ chord, index, isPlaying, onPlay, onRemove, onDrag
       <div
         onClick={() => onPlay(chord)}
         style={{
+          position: "relative",
           display: "inline-flex", alignItems: "center", justifyContent: "center",
           padding: "9px 13px", minWidth: 60, minHeight: 48, borderRadius: 10,
           fontFamily: "'Courier New', monospace", fontSize: 13, fontWeight: 700,
@@ -31,7 +32,12 @@ export function TimelineChip({ chord, index, isPlaying, onPlay, onRemove, onDrag
           transition: "all 0.12s", userSelect: "none",
         }}
       >
-        {chord.name}
+        <span>{chord.name}</span>
+        {(chord.inversion ?? 0) > 0 && (
+          <span style={{ fontSize: 8, opacity: 0.7, position: "absolute", bottom: 5 }}>
+            {chord.inversion === 1 ? "1st" : chord.inversion === 2 ? "2nd" : chord.inversion === 3 ? "3rd" : `${chord.inversion}th`}
+          </span>
+        )}
       </div>
       <button
         onClick={onRemove}

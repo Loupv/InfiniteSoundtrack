@@ -33,8 +33,9 @@ export default function App() {
   const [savedProg,          setSavedProg]          = useState(() => loadSaved())
 
   const [keyboardActiveNotes, setKeyboardActiveNotes] = useState(new Set())
+  const [selectedTimelineId,  setSelectedTimelineId]  = useState(null)
 
-  const [sound, setSound] = useState({ sustain: 1.8, intensity: 0.75, reverb: 0.18, spread: 0.015, tempo: 90 })
+  const [sound, setSound] = useState({ sustain: 1.8, intensity: 0.75, spread: 0.015, tempo: 90 })
   function setSoundKey(key, val) { setSound(s => ({ ...s, [key]: val })) }
 
   const soundRef  = useRef(sound)
@@ -111,16 +112,24 @@ export default function App() {
     // light up that specific key briefly
     setCurrentPlayedNotes([{ pc, oct }])
     setTimeout(() => setCurrentPlayedNotes([]), Math.max(300, sustain * 1000))
-    // toggle pitch class in recognition set
+    // toggle this specific note (per-octave) in the recognition set
+    const noteKey = `${pc}-${oct}`
     setKeyboardActiveNotes(prev => {
       const next = new Set(prev)
-      if (next.has(pc)) next.delete(pc); else next.add(pc)
+      if (next.has(noteKey)) next.delete(noteKey); else next.add(noteKey)
       return next
     })
   }, [])
 
+  // Plays a timeline entry respecting its stored octave + inversion
+  const playTimelineEntry = useCallback(async (entry) => {
+    const inv = entry.inversion ?? 0
+    const oct = entry.octave ?? 4
+    await playChordShifted(entry, oct, inv)
+  }, [playChordShifted])
+
   const playback = usePlayback({
-    progressionRef, beatMsRef, playChord,
+    progressionRef, beatMsRef, playChord: playTimelineEntry,
     onStart:      useCallback(() => setIsPlaying(true),  []),
     onStop:       useCallback(() => { setIsPlaying(false); setPlayingTimelineId(null) }, []),
     onChordStart: useCallback(id  => setPlayingTimelineId(id), []),
@@ -178,25 +187,35 @@ export default function App() {
     return `${NOTES[root]} ${scaleName}`
   }, [timeline.progression])
 
-  const recognizedChord = useMemo(
-    () => recognizeChord(keyboardActiveNotes, allChords),
-    [keyboardActiveNotes, allChords]
-  )
+  const recognizedChord = useMemo(() => {
+    const pcs = new Set([...keyboardActiveNotes].map(k => parseInt(k.split("-")[0])))
+    return recognizeChord(pcs, allChords)
+  }, [keyboardActiveNotes, allChords])
 
   function handleChordClick(chord) {
     setSelectedChordName(chord.name)
+    setSelectedTimelineId(null)
     setInversion(0)
     setSelectedOctave(4)
     playChord(chord)
   }
   function handleChordContextMenu(chord) {
     setSelectedChordName(chord.name)
+    setSelectedTimelineId(null)
     setInversion(0)
     setSelectedOctave(4)
     playChord(chord)
     timeline.addChord(chord)
   }
-  function handleTimelineChordPlay(chord) { setSelectedChordName(chord.name); playChord(chord) }
+  function handleTimelineChordPlay(chord) {
+    const inv = chord.inversion ?? 0
+    const oct = chord.octave ?? 4
+    setSelectedChordName(chord.name)
+    setSelectedTimelineId(chord.id)
+    setInversion(inv)
+    setSelectedOctave(oct)
+    playChordShifted(chord, oct, inv)
+  }
   function handleTogglePlayback() { if (timeline.progression.length) playback.toggle(loopMode) }
   function handleClear() { playback.stop(); timeline.clear() }
   function handleLoadSaved() {
@@ -320,8 +339,16 @@ export default function App() {
           chord={selectedChord}
           octave={selectedOctave}
           inversion={inversion}
-          onOctaveChange={oct => { setSelectedOctave(oct); playChordShifted(selectedChord, oct, inversion) }}
-          onInversionChange={inv => { setInversion(inv); playChordShifted(selectedChord, selectedOctave, inv) }}
+          onOctaveChange={oct => {
+            setSelectedOctave(oct)
+            if (selectedTimelineId) timeline.updateEntry(selectedTimelineId, { octave: oct })
+            playChordShifted(selectedChord, oct, inversion)
+          }}
+          onInversionChange={inv => {
+            setInversion(inv)
+            if (selectedTimelineId) timeline.updateEntry(selectedTimelineId, { inversion: inv })
+            playChordShifted(selectedChord, selectedOctave, inv)
+          }}
           onPlay={playChordShifted}
         />
 
@@ -337,6 +364,7 @@ export default function App() {
           selectedChordColor={selectedChord ? NOTE_COLORS[selectedChord.root] : TEXT.faint}
           keyboardActiveNotes={keyboardActiveNotes}
           recognizedChord={recognizedChord}
+          activeNoteCount={new Set([...keyboardActiveNotes].map(k => parseInt(k.split("-")[0]))).size}
           recognizedChordColor={recognizedChord ? NOTE_COLORS[recognizedChord.root] : TEXT.faint}
           onClearKeyboardNotes={() => setKeyboardActiveNotes(new Set())}
           onRecognizedChordClick={chord => { handleChordClick(chord); setKeyboardActiveNotes(new Set()) }}
