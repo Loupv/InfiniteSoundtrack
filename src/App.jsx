@@ -254,23 +254,6 @@ export default function App() {
         input[type=range] { accent-color: #4a8abf; }
       `}</style>
 
-      {/* ── Buy me a coffee — fixed top-right ── */}
-      <a
-        href="https://buymeacoffee.com/loupv"
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{
-          position: "fixed", top: 12, right: 16, zIndex: 1000,
-          display: "inline-flex", alignItems: "center", gap: 5,
-          background: "#FFDD00", color: "#000", fontFamily: "'Courier New', monospace",
-          fontWeight: 700, fontSize: 11, letterSpacing: "0.05em",
-          padding: "5px 11px", borderRadius: 6, textDecoration: "none",
-          boxShadow: "0 2px 8px #0008", flexShrink: 0,
-        }}
-      >
-        ☕ Buy me a coffee
-      </a>
-
       {/* ── Header ── */}
       <div style={{ marginBottom: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 8, flexWrap: "wrap" }}>
@@ -288,6 +271,20 @@ export default function App() {
               </span>
             ))}
           </div>
+          <a
+            href="https://buymeacoffee.com/loupv"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              marginLeft: "auto",
+              display: "inline-flex", alignItems: "center", gap: 5,
+              background: "#FFDD00", color: "#000", fontFamily: "inherit",
+              fontWeight: 700, fontSize: 11, letterSpacing: "0.05em",
+              padding: "5px 11px", borderRadius: 6, textDecoration: "none", flexShrink: 0,
+            }}
+          >
+            ☕ Buy me a coffee
+          </a>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
           {[
