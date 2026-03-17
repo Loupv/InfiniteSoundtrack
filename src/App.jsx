@@ -277,6 +277,7 @@ export default function App() {
           <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, letterSpacing: "0.08em", color: "#fff" }}>
             CHORD EXPLORER
           </h1>
+          <span style={{ fontSize: 11, color: TEXT.faint, letterSpacing: "0.06em", fontWeight: 700 }}>v1.0</span>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {[["Click","play"],["Right-click","add"],["Drag","timeline"],["Space","play/stop"]].map(([k,d]) => (
               <span key={k} style={{ fontSize: 11, color: TEXT.secondary, whiteSpace: "nowrap" }}>
