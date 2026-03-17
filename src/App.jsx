@@ -134,11 +134,26 @@ export default function App() {
   const selectedChord = useMemo(() =>
     allChords.find(c => c.name === selectedChordName) ?? null, [allChords, selectedChordName])
 
-  // Pitch classes of the selected chord (for keyboard highlighting)
-  const selectedPitchClasses = useMemo(() => {
-    if (!selectedChord) return new Set()
-    return new Set(buildChordMidi(selectedChord.root, selectedChord.intervals).map(midiToPitchClass))
-  }, [selectedChord])
+  // MIDI notes of the selected chord with current inversion + octave (for exact keyboard highlighting)
+  const selectedChordMidiNotes = useMemo(() => {
+    if (!selectedChord) return []
+    const count = selectedChord.intervals.length
+    const rot = ((inversion % count) + count) % count
+    const invIntervals = rot === 0 ? selectedChord.intervals
+      : [...selectedChord.intervals.slice(rot), ...selectedChord.intervals.slice(0, rot).map(i => i + 12)]
+    const octShift = (selectedOctave - 4) * 12
+    return buildChordMidi(selectedChord.root, invIntervals).map(m => m + octShift)
+  }, [selectedChord, inversion, selectedOctave])
+
+  // Keyboard octaves — dynamically cover all notes of the current chord
+  const keyboardOctaves = useMemo(() => {
+    if (!selectedChordMidiNotes.length) return [3, 4]
+    const minOct = Math.min(...selectedChordMidiNotes.map(m => Math.floor(m / 12) - 1))
+    const maxOct = Math.max(...selectedChordMidiNotes.map(m => Math.floor(m / 12) - 1))
+    const startOct = Math.max(0, minOct)
+    const endOct = Math.max(startOct + 1, maxOct)
+    return Array.from({ length: endOct - startOct + 1 }, (_, i) => startOct + i)
+  }, [selectedChordMidiNotes])
 
   const timelineNameSet = useMemo(() =>
     new Set(timeline.progression.map(e => e.name)), [timeline.progression])
@@ -182,8 +197,9 @@ export default function App() {
     return currentPlayedNotes.some(n => n.pc === pc && n.oct === oct)
   }
   function isSelectedPitchWithOct(pc, oct) {
-    // highlight chord notes regardless of octave (just by pitch class)
-    return selectedPitchClasses.has(pc)
+    return selectedChordMidiNotes.some(
+      midi => midiToPitchClass(midi) === pc && Math.floor(midi / 12) - 1 === oct
+    )
   }
 
   const hasSaved = savedProg.length > 0 && (
@@ -300,6 +316,7 @@ export default function App() {
       {/* Row 2: keyboard + sound controls */}
       <div style={{ display: "flex", gap: 10, marginBottom: 14, alignItems: "stretch" }}>
         <KeyboardDisplay
+          octaves={keyboardOctaves}
           isPlayedPitchWithOct={isPlayedPitchWithOct}
           isSelectedPitchWithOct={isSelectedPitchWithOct}
           onNoteClick={playSingleNote}

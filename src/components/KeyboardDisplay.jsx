@@ -1,8 +1,5 @@
 import { TEXT, NOTE_TO_PC } from "../constants"
 
-// Two octaves: C3–B4
-const OCTAVES = [3, 4]
-
 const WHITE_PATTERN = ["C","D","E","F","G","A","B"]
 const BLACK_PATTERN = [
   { note: "C#", slot: 0.65 },
@@ -13,10 +10,10 @@ const BLACK_PATTERN = [
   { note: "Bb", slot: 5.65 },
 ]
 
-// Build a flat list of all keys across octaves
-function buildKeys() {
+// Build a flat list of all keys across the given octaves
+function buildKeys(octaves) {
   const whites = [], blacks = []
-  OCTAVES.forEach((oct, octIdx) => {
+  octaves.forEach((oct, octIdx) => {
     WHITE_PATTERN.forEach((note, wi) => {
       whites.push({ note, oct, globalIndex: octIdx * 7 + wi })
     })
@@ -27,14 +24,14 @@ function buildKeys() {
   return { whites, blacks }
 }
 
-const { whites, blacks } = buildKeys()
-const TOTAL_WHITE = OCTAVES.length * 7
-
-export function KeyboardDisplay({ isPlayedPitchWithOct, isSelectedPitchWithOct, onNoteClick, selectedChordName, selectedChordColor }) {
+export function KeyboardDisplay({ octaves = [3, 4], isPlayedPitchWithOct, isSelectedPitchWithOct, onNoteClick, selectedChordName, selectedChordColor }) {
   const KEY_W = 32
   const KEY_H = 100
   const BK_H  = 62
   const BK_W  = 19
+
+  const { whites, blacks } = buildKeys(octaves)
+  const TOTAL_WHITE = octaves.length * 7
 
   return (
     <div style={{ background: "#0f0f0f", borderRadius: 10, border: "1px solid #1e1e1e", padding: "10px 12px", flexShrink: 0 }}>
@@ -100,7 +97,7 @@ export function KeyboardDisplay({ isPlayedPitchWithOct, isSelectedPitchWithOct, 
           )
         })}
       </div>
-      <p style={{ margin: "5px 0 0", fontSize: 10, color: TEXT.faint }}>C3 – B4 · click to play a note</p>
+      <p style={{ margin: "5px 0 0", fontSize: 10, color: TEXT.faint }}>C{octaves[0]} – B{octaves[octaves.length - 1]} · click to play a note</p>
     </div>
   )
 }
