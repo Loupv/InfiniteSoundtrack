@@ -14,13 +14,15 @@ export function ChordChip({
     bg = color; border = `2px solid ${color}`; textColor = "#fff"
     shadow = `0 0 12px ${color}99`
   } else if (has) {
-    // Background: dark tint at low scores, more saturated at high scores
-    const bgAlpha  = Math.round(SUGGESTION_STYLE.BG_ALPHA_MIN  + suggestionScore * SUGGESTION_STYLE.BG_ALPHA_RANGE)
-    const bdrAlpha = Math.round(SUGGESTION_STYLE.BDR_ALPHA_MIN + suggestionScore * SUGGESTION_STYLE.BDR_ALPHA_RANGE)
-    const glowPx   = Math.round(SUGGESTION_STYLE.GLOW_PX_MIN   + suggestionScore * SUGGESTION_STYLE.GLOW_PX_RANGE)
+    // Power curve: squaring the score makes low-scoring chords nearly invisible
+    // while high-scoring ones are bright and prominent
+    const s = Math.pow(suggestionScore, 2)
+    const bgAlpha  = Math.round(SUGGESTION_STYLE.BG_ALPHA_MIN  + s * SUGGESTION_STYLE.BG_ALPHA_RANGE)
+    const bdrAlpha = Math.round(SUGGESTION_STYLE.BDR_ALPHA_MIN + s * SUGGESTION_STYLE.BDR_ALPHA_RANGE)
+    const glowPx   = Math.round(SUGGESTION_STYLE.GLOW_PX_MIN   + s * SUGGESTION_STYLE.GLOW_PX_RANGE)
     bg        = `${color}${bgAlpha.toString(16).padStart(2, "0")}`
-    border    = `${1.5 + suggestionScore * 1.5}px solid ${color}${bdrAlpha.toString(16).padStart(2, "0")}`
-    textColor = suggestionScore > 0.5 ? color : TEXT.secondary
+    border    = `${1 + s * 2.5}px solid ${color}${bdrAlpha.toString(16).padStart(2, "0")}`
+    textColor = suggestionScore > 0.65 ? color : TEXT.secondary
     shadow    = `0 0 ${glowPx}px ${color}${Math.round(bdrAlpha * 0.7).toString(16).padStart(2, "0")}`
   } else if (isInTimeline) {
     bg = `${color}22`; border = `1.5px solid ${color}88`; textColor = color; shadow = "none"

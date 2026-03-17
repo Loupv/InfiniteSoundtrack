@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 
 import { NOTES, CHORD_TYPES, NOTE_COLORS, SCALES, TEXT, NOTE_TO_PC } from "./constants"
-import { buildChordMidi, midiToFreq, midiToPitchClass, buildAllChords, buildGroupedChords } from "./musicUtils"
+import { buildChordMidi, midiToFreq, midiToPitchClass, buildAllChords, buildGroupedChords, recognizeChord } from "./musicUtils"
 import { detectKey, computeSuggestions } from "./engine/suggestions"
 import { useAudio }    from "./hooks/useAudio"
 import { usePlayback } from "./hooks/usePlayback"
@@ -31,6 +31,8 @@ export default function App() {
   const [showSuggestions,    setShowSuggestions]    = useState(true)
   const [loopMode,           setLoopMode]           = useState(false)
   const [savedProg,          setSavedProg]          = useState(() => loadSaved())
+
+  const [keyboardActiveNotes, setKeyboardActiveNotes] = useState(new Set())
 
   const [sound, setSound] = useState({ sustain: 1.8, intensity: 0.75, reverb: 0.18, spread: 0.015, tempo: 90 })
   function setSoundKey(key, val) { setSound(s => ({ ...s, [key]: val })) }
@@ -85,7 +87,7 @@ export default function App() {
     await playChord(shifted)
   }, [playChord])
 
-  // Play a single note (from keyboard click)
+  // Play a single note (from keyboard click) and toggle it in the active recognition set
   const playSingleNote = useCallback(async (noteName, oct) => {
     const ac = getAudioCtx()
     if (!ac) return
@@ -106,9 +108,15 @@ export default function App() {
     gain.connect(ac.destination)
     osc.start(now)
     osc.stop(now + Math.max(0.3, sustain))
-    // light up that specific key
+    // light up that specific key briefly
     setCurrentPlayedNotes([{ pc, oct }])
     setTimeout(() => setCurrentPlayedNotes([]), Math.max(300, sustain * 1000))
+    // toggle pitch class in recognition set
+    setKeyboardActiveNotes(prev => {
+      const next = new Set(prev)
+      if (next.has(pc)) next.delete(pc); else next.add(pc)
+      return next
+    })
   }, [])
 
   const playback = usePlayback({
@@ -169,6 +177,11 @@ export default function App() {
     const scaleName = SCALES.find(([, s]) => s.join() === scale.join())?.[0] ?? "?"
     return `${NOTES[root]} ${scaleName}`
   }, [timeline.progression])
+
+  const recognizedChord = useMemo(
+    () => recognizeChord(keyboardActiveNotes, allChords),
+    [keyboardActiveNotes, allChords]
+  )
 
   function handleChordClick(chord) {
     setSelectedChordName(chord.name)
@@ -322,6 +335,11 @@ export default function App() {
           onNoteClick={playSingleNote}
           selectedChordName={selectedChordName}
           selectedChordColor={selectedChord ? NOTE_COLORS[selectedChord.root] : TEXT.faint}
+          keyboardActiveNotes={keyboardActiveNotes}
+          recognizedChord={recognizedChord}
+          recognizedChordColor={recognizedChord ? NOTE_COLORS[recognizedChord.root] : TEXT.faint}
+          onClearKeyboardNotes={() => setKeyboardActiveNotes(new Set())}
+          onRecognizedChordClick={chord => { handleChordClick(chord); setKeyboardActiveNotes(new Set()) }}
         />
 
         <SoundControls values={sound} onChange={setSoundKey} />

@@ -1,5 +1,22 @@
 import { NOTES } from "./constants"
 
+// Given a Set of pitch classes (0–11), find the best matching chord.
+// Uses Jaccard similarity; returns null if no chord scores ≥ 0.5.
+export function recognizeChord(pitchClassSet, allChords) {
+  if (pitchClassSet.size < 2) return null
+  let best = null, bestScore = -1
+  for (const chord of allChords) {
+    const rootPc = NOTES.indexOf(chord.root)
+    const chordPcs = new Set(chord.intervals.map(i => (rootPc + i) % 12))
+    const input = [...pitchClassSet]
+    const intersection = input.filter(pc => chordPcs.has(pc)).length
+    const union = new Set([...input, ...chordPcs]).size
+    const score = intersection / union
+    if (score > bestScore) { bestScore = score; best = chord }
+  }
+  return bestScore >= 0.5 ? best : null
+}
+
 export function noteToMidi(note, octave = 4) {
   return 12 * (octave + 1) + NOTES.indexOf(note)
 }

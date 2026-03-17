@@ -36,12 +36,12 @@ export const TEXT = {
 export const NOTE_TO_PC = { C:0,"C#":1,D:2,Eb:3,E:4,F:5,"F#":6,G:7,Ab:8,A:9,Bb:10,B:11 }
 
 export const SUGGESTION_STYLE = {
-  BG_ALPHA_MIN:  20,   // min background alpha (out of 255)
-  BG_ALPHA_RANGE: 120, // range: 20–140
-  BDR_ALPHA_MIN:  100, // min border alpha
-  BDR_ALPHA_RANGE: 155,// range: 100–255
-  GLOW_PX_MIN:  4,     // min glow radius in px
-  GLOW_PX_RANGE: 18,   // range: 4–22px
+  BG_ALPHA_MIN:  5,    // near-invisible for low scores
+  BG_ALPHA_RANGE: 180, // range: 5–185
+  BDR_ALPHA_MIN:  15,  // barely-visible border for low scores
+  BDR_ALPHA_RANGE: 240,// range: 15–255
+  GLOW_PX_MIN:  0,     // no glow for low scores
+  GLOW_PX_RANGE: 30,   // range: 0–30px
 }
 
 export const SCALES = [
