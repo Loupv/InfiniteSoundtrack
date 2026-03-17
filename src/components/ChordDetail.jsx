@@ -23,11 +23,8 @@ function invertIntervals(intervals, n) {
   if (n === 0) return intervals
   const count = intervals.length
   const rot = ((n % count) + count) % count
-  // Raise the first `rot` notes by 12 semitones
-  const rotated = [...intervals.slice(rot), ...intervals.slice(0, rot).map(i => i + 12)]
-  // Re-normalise so the lowest note is 0
-  const min = rotated[0]
-  return rotated.map(i => i - min)
+  // Move the first `rot` notes up by one octave — intervals stay relative to original root
+  return [...intervals.slice(rot), ...intervals.slice(0, rot).map(i => i + 12)]
 }
 
 function inversionLabel(n, total) {

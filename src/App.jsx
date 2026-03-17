@@ -79,7 +79,7 @@ export default function App() {
     const count = intervals.length
     const rot = ((inv % count) + count) % count
     const invIntervals = rot === 0 ? intervals
-      : [...intervals.slice(rot), ...intervals.slice(0, rot).map(i => i + 12)].map((i, _, arr) => i - arr[0])
+      : [...intervals.slice(rot), ...intervals.slice(0, rot).map(i => i + 12)]
     const octShift = (octave - 4) * 12
     const shifted = { ...chord, intervals: invIntervals.map(i => i + octShift) }
     await playChord(shifted)
