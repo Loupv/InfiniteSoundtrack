@@ -229,7 +229,7 @@ export default function App() {
             CHORD EXPLORER
           </h1>
           <a
-            href="https://buymeacoffee.com/YOUR_USERNAME"
+            href="https://buymeacoffee.com/loupv"
             target="_blank"
             rel="noopener noreferrer"
             style={{
