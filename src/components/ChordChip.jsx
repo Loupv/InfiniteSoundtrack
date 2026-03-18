@@ -17,9 +17,8 @@ export function ChordChip({
     bg = color; border = `2px solid ${color}`; textColor = "#fff"
     shadow = `0 0 12px ${color}99`
   } else if (has) {
-    // Power curve: squaring the score makes low-scoring chords nearly invisible
-    // while high-scoring ones are bright and prominent
-    const s = Math.pow(suggestionScore, 2)
+    // Cubic curve: low scores fade to nearly nothing, high scores stay vivid
+    const s = Math.pow(suggestionScore, 3)
     const bgAlpha  = Math.round(SUGGESTION_STYLE.BG_ALPHA_MIN  + s * SUGGESTION_STYLE.BG_ALPHA_RANGE)
     const bdrAlpha = Math.round(SUGGESTION_STYLE.BDR_ALPHA_MIN + s * SUGGESTION_STYLE.BDR_ALPHA_RANGE)
     const bdrWidth = (SUGGESTION_STYLE.BDR_WIDTH_MIN + s * SUGGESTION_STYLE.BDR_WIDTH_RANGE).toFixed(1)

@@ -324,6 +324,11 @@ export default function App() {
         ::-webkit-scrollbar { height: 4px; width: 4px; background: #111; }
         ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
         input[type=range] { accent-color: #4a8abf; }
+        @media (max-width: 600px) {
+          .kbd-hints { display: none !important; }
+          .coffee-btn { font-size: 13px !important; padding: 10px 16px !important; }
+          .settings-dropdown { right: auto !important; left: 0 !important; }
+        }
       `}</style>
 
       {/* ── Header ── */}
@@ -332,8 +337,8 @@ export default function App() {
           <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, letterSpacing: "0.08em", color: "#fff" }}>
             CHORD EXPLORER
           </h1>
-          <span style={{ fontSize: 11, color: TEXT.faint, letterSpacing: "0.06em", fontWeight: 700 }}>v1.0</span>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 11, color: TEXT.faint, letterSpacing: "0.06em", fontWeight: 700 }}>v1.1</span>
+          <div className="kbd-hints" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {[["Click", t("clickHint",notation)],["Right-click", t("rclickHint",notation)],["Drag", t("dragHint",notation)],["Space", t("spaceHint",notation)]].map(([k,d]) => (
               <span key={k} style={{ fontSize: 11, color: TEXT.secondary, whiteSpace: "nowrap" }}>
                 <span style={{
@@ -355,7 +360,7 @@ export default function App() {
               }}
             >⚙</button>
             {showSettings && (
-              <div style={{
+              <div className="settings-dropdown" style={{
                 position: "absolute", top: 34, right: 0, zIndex: 100,
                 background: "#141414", border: "1px solid #2a2a2a", borderRadius: 8,
                 padding: "12px 16px", minWidth: 180, boxShadow: "0 4px 20px #000a",
@@ -387,6 +392,7 @@ export default function App() {
             )}
           </div>
           <a
+            className="coffee-btn"
             href="https://buymeacoffee.com/loupv"
             target="_blank"
             rel="noopener noreferrer"
@@ -400,12 +406,13 @@ export default function App() {
             ☕ Buy me a coffee
           </a>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 6 }}>
           {[
-            { icon: "♩", title: t("browseTitle",notation), body: t("browseBody",notation) },
-            { icon: "⟶", title: t("buildTitle",notation),  body: t("buildBody",notation) },
-            { icon: "▶", title: t("playTitle",notation),   body: t("playBody",notation) },
-            { icon: "◉", title: t("suggestTitle",notation),body: t("suggestBody",notation) },
+            { icon: "♩", title: t("browseTitle",notation),  body: t("browseBody",notation) },
+            { icon: "⟶", title: t("buildTitle",notation),   body: t("buildBody",notation) },
+            { icon: "▶", title: t("playTitle",notation),    body: t("playBody",notation) },
+            { icon: "◉", title: t("suggestTitle",notation), body: t("suggestBody",notation) },
+            { icon: "⚄", title: t("randomTitle",notation),  body: t("randomBody",notation) },
           ].map(({ icon, title, body }) => (
             <div key={title} style={{ background: "#111", border: "1px solid #1e1e1e", borderRadius: 8, padding: "7px 9px", display: "flex", gap: 7 }}>
               <span style={{ fontSize: 12, color: "#4a8abf", flexShrink: 0 }}>{icon}</span>

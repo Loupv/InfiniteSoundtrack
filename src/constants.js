@@ -44,14 +44,14 @@ export const NOTE_FR = {
 export const PC_NAMES_FR = ["Do","Do#","Ré","Mib","Mi","Fa","Fa#","Sol","Lab","La","Sib","Si"]
 
 export const SUGGESTION_STYLE = {
-  BG_ALPHA_MIN:  20,   // visible even for low scores
-  BG_ALPHA_RANGE: 200, // range: 20–220
-  BDR_ALPHA_MIN:  80,  // clearly visible border at all scores
-  BDR_ALPHA_RANGE: 175,// range: 80–255
-  BDR_WIDTH_MIN:  2,   // minimum border width in px
-  BDR_WIDTH_RANGE: 2,  // range: 2–4px
-  GLOW_PX_MIN:  4,     // slight glow even for low scores
-  GLOW_PX_RANGE: 28,   // range: 4–32px
+  BG_ALPHA_MIN:   0,   // no color at low scores
+  BG_ALPHA_RANGE: 210, // range: 0–210
+  BDR_ALPHA_MIN:  0,   // no border at low scores
+  BDR_ALPHA_RANGE: 255,// range: 0–255
+  BDR_WIDTH_MIN:  1.5, // minimum border width in px
+  BDR_WIDTH_RANGE: 2.5,// range: 1.5–4px
+  GLOW_PX_MIN:  0,     // no glow at low scores
+  GLOW_PX_RANGE: 32,   // range: 0–32px
 }
 
 // Duration values in beats (1 beat = 1 noire / quarter note at current tempo)

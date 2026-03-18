@@ -1,5 +1,5 @@
 import { NOTE_COLORS, TEXT, DURATIONS } from "../constants"
-import { buildChordMidi, midiToPitchClass, chordDisplayName, pcDisplayName } from "../musicUtils"
+import { buildChordMidi, chordDisplayName, spellNote } from "../musicUtils"
 import { t, durName } from "../i18n"
 
 const PC_NAMES = ["C","C#","D","Eb","E","F","F#","G","Ab","A","Bb","B"]
@@ -69,7 +69,7 @@ export function ChordDetail({ chord, octave, inversion, beats = 1, notation = "e
   const midiNotes = buildChordMidi(chord.root, invIntervals).map(m => m + octShift)
 
   const noteCards = midiNotes.map((midi, i) => ({
-    name:     `${pcDisplayName(midiToPitchClass(midi), notation)}${Math.floor(midi / 12) - 1}`,
+    name:     `${spellNote(chord.root, invIntervals[i], notation)}${Math.floor(midi / 12) - 1}`,
     interval: intervalLabel(invIntervals[i]),
     isBass:   i === 0,
   }))

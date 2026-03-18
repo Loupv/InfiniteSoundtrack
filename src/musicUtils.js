@@ -69,6 +69,36 @@ export function pcDisplayName(pc, notation) {
   return PC_NAMES_FR[pc]
 }
 
+// Spell a chord tone correctly using functional harmony (e.g. C# + 4st = E#, not F).
+// rootName: e.g. "C#", "Bb". semitones: interval from root (may exceed 11 for octave+ spans).
+const _LETTERS    = ["C","D","E","F","G","A","B"]
+const _LETTER_PC  = [0, 2, 4, 5, 7, 9, 11]
+// Semitones mod 12 → diatonic degree offset within an octave.
+// interval 8 maps to degree 4 (augmented 5th, as in aug chord) rather than degree 5 (minor 6th).
+// interval 6 maps to degree 4 (diminished 5th, as in dim chord).
+const _SEM_DEG    = [0, 1, 1, 2, 2, 3, 4, 4, 4, 5, 6, 6]
+const _LETTER_FR  = { C:"Do", D:"Ré", E:"Mi", F:"Fa", G:"Sol", A:"La", B:"Si" }
+
+export function spellNote(rootName, semitones, notation = "english") {
+  const rootLetter   = rootName[0]
+  const rootAccVal   = [...rootName.slice(1)].reduce((s, c) => s + (c === "#" ? 1 : c === "b" ? -1 : 0), 0)
+  const rootLetterIdx = _LETTERS.indexOf(rootLetter)
+  const rootPc       = ((_LETTER_PC[rootLetterIdx] + rootAccVal) % 12 + 12) % 12
+
+  const targetPc      = ((rootPc + semitones) % 12 + 12) % 12
+  const degreeOffset  = _SEM_DEG[semitones % 12] + 7 * Math.floor(semitones / 12)
+  const tgtLetterIdx  = (rootLetterIdx + degreeOffset) % 7
+  const tgtLetter     = _LETTERS[tgtLetterIdx]
+  const tgtNaturalPc  = _LETTER_PC[tgtLetterIdx]
+
+  let acc = ((targetPc - tgtNaturalPc) % 12 + 12) % 12
+  if (acc > 6) acc -= 12
+  const accStr = acc === 0 ? "" : acc === 1 ? "#" : acc === 2 ? "##" : acc === -1 ? "b" : acc === -2 ? "bb" : "?"
+
+  if (notation === "french") return (_LETTER_FR[tgtLetter] ?? tgtLetter) + accStr
+  return tgtLetter + accStr
+}
+
 export function buildGroupedChords(notes, chordTypes) {
   return notes.map(note => ({
     note,

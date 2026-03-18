@@ -43,6 +43,8 @@ const TRANSLATIONS = {
     playBody:      "Space or Play. Tempo & all params apply live.",
     suggestTitle:  "SUGGEST",
     suggestBody:   "Coloured border = suggested next chord. Brighter = stronger fit.",
+    randomTitle:   "RANDOMIZE",
+    randomBody:    "⚄ generates 4 chords, ⚄+ adds one. Music-theory aware: key, voice-leading & common progressions.",
   },
   french: {
     // ChordDetail
@@ -88,6 +90,8 @@ const TRANSLATIONS = {
     playBody:      "Espace ou Jouer. Tempo & paramètres appliqués en direct.",
     suggestTitle:  "SUGGÉRER",
     suggestBody:   "Contour coloré = prochain accord suggéré. Plus lumineux = meilleur enchaînement.",
+    randomTitle:   "ALÉATOIRE",
+    randomBody:    "⚄ génère 4 accords, ⚄+ en ajoute un. Basé sur la théorie : tonalité, conduite des voix & progressions courantes.",
   },
 }
 
