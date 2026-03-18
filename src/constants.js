@@ -56,11 +56,11 @@ export const SUGGESTION_STYLE = {
 
 // Duration values in beats (1 beat = 1 noire / quarter note at current tempo)
 export const DURATIONS = [
-  { beats: 0.25, label: "𝅘𝅥𝅯", name: "double croche" },
-  { beats: 0.5,  label: "♪",  name: "croche" },
-  { beats: 1,    label: "♩",  name: "noire" },
-  { beats: 2,    label: "𝅗𝅥",  name: "blanche" },
-  { beats: 4,    label: "𝅝",  name: "ronde" },
+  { beats: 0.25, label: "♬", name: "double croche" },
+  { beats: 0.5,  label: "♪", name: "croche" },
+  { beats: 1,    label: "♩", name: "noire" },
+  { beats: 2,    label: "◑", name: "blanche" },
+  { beats: 4,    label: "○", name: "ronde" },
 ]
 
 export const SCALES = [

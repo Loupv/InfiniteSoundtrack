@@ -16,8 +16,8 @@ export function TimelineChip({ chord, index, isPlaying, onPlay, onRemove, onDrag
   const beats  = chord.beats ?? 1
   const displayName = chordDisplayName(chord.name, chord.root, notation)
   const dur    = DURATIONS.find(d => d.beats === beats) ?? DURATIONS[2]
-  // Width scales with duration: 56px per beat, min 44px
-  const chipW  = Math.max(44, Math.round(56 * beats))
+  // Width scales proportionally with duration: 72px per beat
+  const chipW  = Math.max(28, Math.min(200, Math.round(72 * beats)))
 
   return (
     <div
