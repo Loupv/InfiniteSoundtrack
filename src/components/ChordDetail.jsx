@@ -54,7 +54,7 @@ export function ChordDetail({ chord, octave, inversion, beats = 1, notation = "e
       <div style={{
         background: "#0f0f0f", border: "1px solid #1e1e1e", borderRadius: 10,
         padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "center",
-        minWidth: 220, flex: "0 0 220px",
+        minWidth: 260, flex: "0 0 260px",
       }}>
         <span style={{ fontSize: 12, color: TEXT.faint }}>Select a chord</span>
       </div>
@@ -76,7 +76,7 @@ export function ChordDetail({ chord, octave, inversion, beats = 1, notation = "e
   return (
     <div style={{
       background: "#0f0f0f", border: `1px solid ${color}44`, borderRadius: 10,
-      padding: "10px 14px", minWidth: 220, flex: "0 0 auto",
+      padding: "10px 14px", minWidth: 260, flex: "0 0 auto",
     }}>
       {/* Title */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -157,7 +157,7 @@ export function ChordDetail({ chord, octave, inversion, beats = 1, notation = "e
                     onClick={() => onBeatsChange(d.beats)}
                     title={d.name}
                     style={{
-                      width: 26, height: 22, borderRadius: 4, padding: 0,
+                      width: 32, height: 24, borderRadius: 4, padding: 0,
                       border: active ? `1px solid ${color}` : "1px solid #2e2e2e",
                       background: active ? `${color}22` : "#1a1a1a",
                       color: active ? color : TEXT.faint,
