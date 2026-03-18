@@ -394,7 +394,7 @@ export default function App() {
             )}
           </div>
           <a
-            className="coffee-btn"
+            className="coffee-btn-header"
             href="https://buymeacoffee.com/loupv"
             target="_blank"
             rel="noopener noreferrer"
@@ -528,11 +528,12 @@ export default function App() {
         target="_blank"
         rel="noopener noreferrer"
         style={{
-          alignItems: "center", justifyContent: "center", gap: 6,
-          background: "#FFDD00", color: "#000", fontFamily: "inherit",
-          fontWeight: 700, fontSize: 14, letterSpacing: "0.05em",
-          padding: "12px 20px", borderRadius: 8, textDecoration: "none",
-          margin: "16px auto 8px", width: "fit-content",
+          alignItems: "center", justifyContent: "center", gap: 5,
+          background: "transparent", color: "#888", fontFamily: "inherit",
+          fontWeight: 500, fontSize: 11, letterSpacing: "0.03em",
+          padding: "6px 12px", borderRadius: 6, textDecoration: "none",
+          margin: "12px auto 4px", width: "fit-content",
+          border: "1px solid #333",
         }}
       >
         ☕ Buy me a coffee
