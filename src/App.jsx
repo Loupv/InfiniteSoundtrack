@@ -324,9 +324,13 @@ export default function App() {
         ::-webkit-scrollbar { height: 4px; width: 4px; background: #111; }
         ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
         input[type=range] { accent-color: #4a8abf; }
+        .coffee-btn-mobile { display: none !important; }
+        .footer-bar { justify-content: center !important; }
         @media (max-width: 600px) {
           .kbd-hints { display: none !important; }
           .coffee-btn-header { display: none !important; }
+          .coffee-btn-mobile { display: inline-flex !important; }
+          .footer-bar { justify-content: space-between !important; }
           .settings-dropdown { right: auto !important; left: 0 !important; }
         }
       `}</style>
@@ -520,14 +524,32 @@ export default function App() {
       />
 
       {/* ── Footer ── */}
-      <div style={{
-        marginTop: 16, padding: "10px",
-        borderTop: "1px solid #1e1e1e",
-        textAlign: "center", fontSize: 10, color: TEXT.faint, letterSpacing: "0.04em",
+      <div className="footer-bar" style={{
+        marginTop: 16, padding: "12px 16px",
+        borderTop: "1px solid #252525",
+        background: "#0d0d0d", borderRadius: "0 0 10px 10px",
+        display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10,
       }}>
-        Contact :{" "}
-        <a href="mailto:loup.vuarnesson@pm.me" style={{ color: TEXT.muted, textDecoration: "none" }}>
-          loup.vuarnesson@pm.me
+        <span style={{ fontSize: 10, color: TEXT.muted, letterSpacing: "0.04em" }}>
+          Loup Vuarnesson &nbsp;·&nbsp;{" "}
+          <a href="mailto:loup.vuarnesson@pm.me" style={{ color: TEXT.secondary, textDecoration: "none" }}>
+            loup.vuarnesson@pm.me
+          </a>
+        </span>
+        <a
+          className="coffee-btn-mobile"
+          href="https://buymeacoffee.com/loupv"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 5,
+            background: "#1c1800", color: "#c8a800", fontFamily: "inherit",
+            fontWeight: 600, fontSize: 10, letterSpacing: "0.04em",
+            padding: "5px 10px", borderRadius: 5, textDecoration: "none",
+            border: "1px solid #3a3000",
+          }}
+        >
+          ☕ Buy me a coffee
         </a>
       </div>
     </div>
