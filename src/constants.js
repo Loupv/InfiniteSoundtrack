@@ -35,14 +35,33 @@ export const TEXT = {
 
 export const NOTE_TO_PC = { C:0,"C#":1,D:2,Eb:3,E:4,F:5,"F#":6,G:7,Ab:8,A:9,Bb:10,B:11 }
 
-export const SUGGESTION_STYLE = {
-  BG_ALPHA_MIN:  20,   // min background alpha (out of 255)
-  BG_ALPHA_RANGE: 120, // range: 20–140
-  BDR_ALPHA_MIN:  100, // min border alpha
-  BDR_ALPHA_RANGE: 155,// range: 100–255
-  GLOW_PX_MIN:  4,     // min glow radius in px
-  GLOW_PX_RANGE: 18,   // range: 4–22px
+// French (solfège) note names
+export const NOTE_FR = {
+  "C":"Do","C#":"Do#","D":"Ré","Eb":"Mib","E":"Mi",
+  "F":"Fa","F#":"Fa#","G":"Sol","Ab":"Lab","A":"La","Bb":"Sib","B":"Si",
 }
+// Chromatic scale in French for note cards (index = pitch class 0–11)
+export const PC_NAMES_FR = ["Do","Do#","Ré","Mib","Mi","Fa","Fa#","Sol","Lab","La","Sib","Si"]
+
+export const SUGGESTION_STYLE = {
+  BG_ALPHA_MIN:  20,   // visible even for low scores
+  BG_ALPHA_RANGE: 200, // range: 20–220
+  BDR_ALPHA_MIN:  80,  // clearly visible border at all scores
+  BDR_ALPHA_RANGE: 175,// range: 80–255
+  BDR_WIDTH_MIN:  2,   // minimum border width in px
+  BDR_WIDTH_RANGE: 2,  // range: 2–4px
+  GLOW_PX_MIN:  4,     // slight glow even for low scores
+  GLOW_PX_RANGE: 28,   // range: 4–32px
+}
+
+// Duration values in beats (1 beat = 1 noire / quarter note at current tempo)
+export const DURATIONS = [
+  { beats: 0.25, label: "\u266C\uFE0E", name: "double croche" },
+  { beats: 0.5,  label: "\u266A\uFE0E", name: "croche" },
+  { beats: 1,    label: "\u2669\uFE0E", name: "noire" },
+  { beats: 2,    label: "\u25D1",       name: "blanche" },
+  { beats: 4,    label: "\u25CB",       name: "ronde" },
+]
 
 export const SCALES = [
   ["major",      [0,2,4,5,7,9,11]],

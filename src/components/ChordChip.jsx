@@ -1,10 +1,13 @@
 import { NOTE_COLORS, TEXT, SUGGESTION_STYLE } from "../constants"
+import { chordDisplayName } from "../musicUtils"
 
 export function ChordChip({
   chord, isActive, isInTimeline, suggestionScore = 0,
+  notation = "english",
   draggable, onDragStart, onClick, onContextMenu,
 }) {
   const color = NOTE_COLORS[chord.root] ?? "#888"
+  const displayName = chordDisplayName(chord.name, chord.root, notation)
   const has   = suggestionScore > 0
 
   // Much stronger visual graduation:
@@ -14,12 +17,15 @@ export function ChordChip({
     bg = color; border = `2px solid ${color}`; textColor = "#fff"
     shadow = `0 0 12px ${color}99`
   } else if (has) {
-    // Background: dark tint at low scores, more saturated at high scores
-    const bgAlpha  = Math.round(SUGGESTION_STYLE.BG_ALPHA_MIN  + suggestionScore * SUGGESTION_STYLE.BG_ALPHA_RANGE)
-    const bdrAlpha = Math.round(SUGGESTION_STYLE.BDR_ALPHA_MIN + suggestionScore * SUGGESTION_STYLE.BDR_ALPHA_RANGE)
-    const glowPx   = Math.round(SUGGESTION_STYLE.GLOW_PX_MIN   + suggestionScore * SUGGESTION_STYLE.GLOW_PX_RANGE)
+    // Power curve: squaring the score makes low-scoring chords nearly invisible
+    // while high-scoring ones are bright and prominent
+    const s = Math.pow(suggestionScore, 2)
+    const bgAlpha  = Math.round(SUGGESTION_STYLE.BG_ALPHA_MIN  + s * SUGGESTION_STYLE.BG_ALPHA_RANGE)
+    const bdrAlpha = Math.round(SUGGESTION_STYLE.BDR_ALPHA_MIN + s * SUGGESTION_STYLE.BDR_ALPHA_RANGE)
+    const bdrWidth = (SUGGESTION_STYLE.BDR_WIDTH_MIN + s * SUGGESTION_STYLE.BDR_WIDTH_RANGE).toFixed(1)
+    const glowPx   = Math.round(SUGGESTION_STYLE.GLOW_PX_MIN   + s * SUGGESTION_STYLE.GLOW_PX_RANGE)
     bg        = `${color}${bgAlpha.toString(16).padStart(2, "0")}`
-    border    = `${1.5 + suggestionScore * 1.5}px solid ${color}${bdrAlpha.toString(16).padStart(2, "0")}`
+    border    = `${bdrWidth}px solid ${color}${bdrAlpha.toString(16).padStart(2, "0")}`
     textColor = suggestionScore > 0.5 ? color : TEXT.secondary
     shadow    = `0 0 ${glowPx}px ${color}${Math.round(bdrAlpha * 0.7).toString(16).padStart(2, "0")}`
   } else if (isInTimeline) {
@@ -34,7 +40,7 @@ export function ChordChip({
       onDragStart={onDragStart}
       onClick={onClick}
       onContextMenu={onContextMenu}
-      title={`${chord.name}${has ? ` · suggestion ${Math.round(suggestionScore * 100)}%` : ""}`}
+      title={`${displayName}${has ? ` · suggestion ${Math.round(suggestionScore * 100)}%` : ""}`}
       style={{
         display: "inline-flex", alignItems: "center", justifyContent: "center",
         padding: "4px 7px", minWidth: 42, minHeight: 30, borderRadius: 6,
@@ -44,7 +50,7 @@ export function ChordChip({
         transition: "background 0.15s, border 0.15s, color 0.15s, box-shadow 0.15s",
       }}
     >
-      {chord.name}
+      {displayName}
     </div>
   )
 }
