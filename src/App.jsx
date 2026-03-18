@@ -326,9 +326,11 @@ export default function App() {
         input[type=range] { accent-color: #4a8abf; }
         @media (max-width: 600px) {
           .kbd-hints { display: none !important; }
-          .coffee-btn { font-size: 13px !important; padding: 10px 16px !important; }
+          .coffee-btn-header { display: none !important; }
+          .coffee-btn-mobile { display: flex !important; }
           .settings-dropdown { right: auto !important; left: 0 !important; }
         }
+        .coffee-btn-mobile { display: none; }
       `}</style>
 
       {/* ── Header ── */}
@@ -518,6 +520,23 @@ export default function App() {
         onChordContextMenu={handleChordContextMenu}
         onChordDragStart={timeline.onGridDragStart}
       />
+
+      {/* ── Mobile coffee button (end of page) ── */}
+      <a
+        className="coffee-btn-mobile"
+        href="https://buymeacoffee.com/loupv"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          alignItems: "center", justifyContent: "center", gap: 6,
+          background: "#FFDD00", color: "#000", fontFamily: "inherit",
+          fontWeight: 700, fontSize: 14, letterSpacing: "0.05em",
+          padding: "12px 20px", borderRadius: 8, textDecoration: "none",
+          margin: "16px auto 8px", width: "fit-content",
+        }}
+      >
+        ☕ Buy me a coffee
+      </a>
     </div>
   )
 }
