@@ -10,7 +10,7 @@ export class AudioEngine {
     return this._ctx
   }
 
-  async play(chord, { sustain, intensity, spread }) {
+  async play(chord, { sustain, intensity, spread, waveType = "triangle" }) {
     const ac = this._getCtx()
     if (ac.state === "suspended") await ac.resume()
 
@@ -27,7 +27,7 @@ export class AudioEngine {
     midiNotes.forEach((midi, i) => {
       const osc  = ac.createOscillator()
       const gain = ac.createGain()
-      osc.type            = "triangle"
+      osc.type            = waveType
       osc.frequency.value = midiToFreq(midi)
       gain.gain.value     = (0.65 * intensity) / Math.max(midiNotes.length, 3)
       osc.connect(gain)

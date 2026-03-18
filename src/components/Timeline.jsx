@@ -21,7 +21,7 @@ export function Timeline({
   loopMode, isPlaying, playingTimelineId,
   hasSaved, savedProgSummary,
   onToggleSuggestions, onToggleLoop,
-  onRemove, onClear, onTogglePlayback, onLoadSaved,
+  onRemove, onClear, onTogglePlayback, onLoadSaved, onExportMidi,
   onTimelineDragStart,
   onSlotDragOver, onZoneDragOver, onZoneDragLeave, onZoneDrop,
   onChordPlay,
@@ -48,6 +48,11 @@ export function Timeline({
           <BtnSmall onClick={onTogglePlayback} active={progression.length > 0}>
             {isPlaying ? "■ stop" : "▶ play"}
           </BtnSmall>
+          {progression.length > 0 && (
+            <BtnSmall onClick={onExportMidi} title="Export as MIDI file">
+              ↓ midi
+            </BtnSmall>
+          )}
           {hasSaved && (
             <BtnSmall onClick={onLoadSaved} title={`Load: ${savedProgSummary}${savedProgSummary ? "…" : ""}`}>
               ↩ restore

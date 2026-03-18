@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { NOTES, CHORD_TYPES, NOTE_COLORS, SCALES, TEXT, NOTE_TO_PC } from "./constants"
 import { buildChordMidi, midiToFreq, midiToPitchClass, buildAllChords, buildGroupedChords, recognizeChord } from "./musicUtils"
 import { detectKey, computeSuggestions } from "./engine/suggestions"
+import { downloadMidi } from "./engine/midi"
 import { useAudio }    from "./hooks/useAudio"
 import { usePlayback } from "./hooks/usePlayback"
 import { useTimeline } from "./hooks/useTimeline"
@@ -34,8 +35,9 @@ export default function App() {
 
   const [keyboardActiveNotes, setKeyboardActiveNotes] = useState(new Set())
   const [selectedTimelineId,  setSelectedTimelineId]  = useState(null)
+  const [selectedBeats,       setSelectedBeats]       = useState(1)
 
-  const [sound, setSound] = useState({ sustain: 1.8, intensity: 0.75, spread: 0.015, tempo: 90 })
+  const [sound, setSound] = useState({ sustain: 1.8, intensity: 0.75, spread: 0.015, tempo: 90, waveType: "triangle" })
   function setSoundKey(key, val) { setSound(s => ({ ...s, [key]: val })) }
 
   const soundRef  = useRef(sound)
@@ -96,11 +98,11 @@ export default function App() {
     const pc   = NOTE_TO_PC[noteName]
     const midi = 12 * (oct + 1) + pc
     const freq = midiToFreq(midi)
-    const { sustain, intensity } = soundRef.current
+    const { sustain, intensity, waveType = "triangle" } = soundRef.current
     const now = ac.currentTime
     const osc  = ac.createOscillator()
     const gain = ac.createGain()
-    osc.type = "triangle"
+    osc.type = waveType
     osc.frequency.value = freq
     gain.gain.setValueAtTime(0.0001, now)
     gain.gain.exponentialRampToValueAtTime(0.2 * intensity, now + 0.02)
@@ -214,10 +216,12 @@ export default function App() {
     setSelectedTimelineId(chord.id)
     setInversion(inv)
     setSelectedOctave(oct)
+    setSelectedBeats(chord.beats ?? 1)
     playChordShifted(chord, oct, inv)
   }
   function handleTogglePlayback() { if (timeline.progression.length) playback.toggle(loopMode) }
   function handleClear() { playback.stop(); timeline.clear() }
+  function handleExportMidi() { downloadMidi(timeline.progression, sound.tempo) }
   function handleLoadSaved() {
     if (!savedProg.length) return
     playback.stop()
@@ -324,6 +328,7 @@ export default function App() {
             onToggleLoop={() => setLoopMode(l => !l)}
             onTogglePlayback={handleTogglePlayback}
             onClear={handleClear}
+            onExportMidi={handleExportMidi}
             onLoadSaved={handleLoadSaved}
             onRemove={timeline.removeChord}
             onChordPlay={handleTimelineChordPlay}
@@ -340,6 +345,7 @@ export default function App() {
           chord={selectedChord}
           octave={selectedOctave}
           inversion={inversion}
+          beats={selectedBeats}
           onOctaveChange={oct => {
             setSelectedOctave(oct)
             if (selectedTimelineId) timeline.updateEntry(selectedTimelineId, { octave: oct })
@@ -350,6 +356,10 @@ export default function App() {
             if (selectedTimelineId) timeline.updateEntry(selectedTimelineId, { inversion: inv })
             playChordShifted(selectedChord, selectedOctave, inv)
           }}
+          onBeatsChange={selectedTimelineId ? beats => {
+            setSelectedBeats(beats)
+            timeline.updateEntry(selectedTimelineId, { beats })
+          } : null}
           onPlay={playChordShifted}
         />
 

@@ -1,4 +1,4 @@
-import { NOTE_COLORS, TEXT } from "../constants"
+import { NOTE_COLORS, TEXT, DURATIONS } from "../constants"
 import { buildChordMidi, midiToPitchClass } from "../musicUtils"
 
 const PC_NAMES = ["C","C#","D","Eb","E","F","F#","G","Ab","A","Bb","B"]
@@ -48,7 +48,7 @@ function SmallBtn({ onClick, children, title, disabled }) {
   )
 }
 
-export function ChordDetail({ chord, octave, inversion, onOctaveChange, onInversionChange, onPlay }) {
+export function ChordDetail({ chord, octave, inversion, beats = 1, onOctaveChange, onInversionChange, onBeatsChange, onPlay }) {
   if (!chord) {
     return (
       <div style={{
@@ -143,6 +143,33 @@ export function ChordDetail({ chord, octave, inversion, onOctaveChange, onInvers
             >reset</button>
           )}
         </div>
+
+        {/* Duration */}
+        {onBeatsChange && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 10, color: TEXT.muted, width: 58, flexShrink: 0 }}>Durée</span>
+            <div style={{ display: "flex", gap: 3 }}>
+              {DURATIONS.map(d => {
+                const active = beats === d.beats
+                return (
+                  <button
+                    key={d.beats}
+                    onClick={() => onBeatsChange(d.beats)}
+                    title={d.name}
+                    style={{
+                      width: 26, height: 22, borderRadius: 4, padding: 0,
+                      border: active ? `1px solid ${color}` : "1px solid #2e2e2e",
+                      background: active ? `${color}22` : "#1a1a1a",
+                      color: active ? color : TEXT.faint,
+                      fontSize: 11, cursor: "pointer",
+                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    }}
+                  >{d.label}</button>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

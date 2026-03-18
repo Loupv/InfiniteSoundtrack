@@ -1,4 +1,4 @@
-import { NOTE_COLORS } from "../constants"
+import { NOTE_COLORS, DURATIONS } from "../constants"
 
 export function DropIndicator() {
   return (
@@ -11,7 +11,12 @@ export function DropIndicator() {
 }
 
 export function TimelineChip({ chord, index, isPlaying, onPlay, onRemove, onDragStart }) {
-  const color = NOTE_COLORS[chord.root] ?? "#888"
+  const color  = NOTE_COLORS[chord.root] ?? "#888"
+  const beats  = chord.beats ?? 1
+  const dur    = DURATIONS.find(d => d.beats === beats) ?? DURATIONS[2]
+  // Width scales with duration: 56px per beat, min 44px
+  const chipW  = Math.max(44, Math.round(56 * beats))
+
   return (
     <div
       draggable
@@ -23,18 +28,20 @@ export function TimelineChip({ chord, index, isPlaying, onPlay, onRemove, onDrag
         style={{
           position: "relative",
           display: "inline-flex", alignItems: "center", justifyContent: "center",
-          padding: "9px 13px", minWidth: 60, minHeight: 48, borderRadius: 10,
+          padding: "9px 6px", width: chipW, minHeight: 48, borderRadius: 10,
           fontFamily: "'Courier New', monospace", fontSize: 13, fontWeight: 700,
           background: isPlaying ? color : `${color}1a`,
           color: isPlaying ? "#fff" : color,
           border: `2px solid ${color}`,
           boxShadow: isPlaying ? `0 0 14px ${color}88` : "none",
           transition: "all 0.12s", userSelect: "none",
+          flexDirection: "column", gap: 2,
         }}
       >
-        <span>{chord.name}</span>
+        <span style={{ fontSize: Math.max(9, 13 - Math.max(0, chord.name.length - 4)) }}>{chord.name}</span>
+        <span style={{ fontSize: 9, opacity: 0.6 }}>{dur.label}</span>
         {(chord.inversion ?? 0) > 0 && (
-          <span style={{ fontSize: 8, opacity: 0.7, position: "absolute", bottom: 5 }}>
+          <span style={{ fontSize: 8, opacity: 0.7, position: "absolute", bottom: 3, right: 4 }}>
             {chord.inversion === 1 ? "1st" : chord.inversion === 2 ? "2nd" : chord.inversion === 3 ? "3rd" : `${chord.inversion}th`}
           </span>
         )}

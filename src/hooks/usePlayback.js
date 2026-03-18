@@ -32,8 +32,9 @@ export function usePlayback({ progressionRef, beatMsRef, playChord, onStart, onS
           if (stopRef.current) break
           onChordStart?.(entry.id)
           await playChord(entry)
-          // wait one beat; poll stopRef every 16 ms so we react quickly
-          const target = Date.now() + beatMsRef.current
+          // wait for entry duration; poll stopRef every 16 ms so we react quickly
+          const beats = entry.beats ?? 1
+          const target = Date.now() + beatMsRef.current * beats
           while (Date.now() < target) {
             if (stopRef.current) break
             await new Promise(r => setTimeout(r, 16))

@@ -36,13 +36,24 @@ export const TEXT = {
 export const NOTE_TO_PC = { C:0,"C#":1,D:2,Eb:3,E:4,F:5,"F#":6,G:7,Ab:8,A:9,Bb:10,B:11 }
 
 export const SUGGESTION_STYLE = {
-  BG_ALPHA_MIN:  5,    // near-invisible for low scores
-  BG_ALPHA_RANGE: 180, // range: 5–185
-  BDR_ALPHA_MIN:  15,  // barely-visible border for low scores
-  BDR_ALPHA_RANGE: 240,// range: 15–255
-  GLOW_PX_MIN:  0,     // no glow for low scores
-  GLOW_PX_RANGE: 30,   // range: 0–30px
+  BG_ALPHA_MIN:  20,   // visible even for low scores
+  BG_ALPHA_RANGE: 200, // range: 20–220
+  BDR_ALPHA_MIN:  80,  // clearly visible border at all scores
+  BDR_ALPHA_RANGE: 175,// range: 80–255
+  BDR_WIDTH_MIN:  2,   // minimum border width in px
+  BDR_WIDTH_RANGE: 2,  // range: 2–4px
+  GLOW_PX_MIN:  4,     // slight glow even for low scores
+  GLOW_PX_RANGE: 28,   // range: 4–32px
 }
+
+// Duration values in beats (1 beat = 1 noire / quarter note at current tempo)
+export const DURATIONS = [
+  { beats: 0.25, label: "𝅘𝅥𝅯", name: "double croche" },
+  { beats: 0.5,  label: "♪",  name: "croche" },
+  { beats: 1,    label: "♩",  name: "noire" },
+  { beats: 2,    label: "𝅗𝅥",  name: "blanche" },
+  { beats: 4,    label: "𝅝",  name: "ronde" },
+]
 
 export const SCALES = [
   ["major",      [0,2,4,5,7,9,11]],
