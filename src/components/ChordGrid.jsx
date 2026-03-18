@@ -1,8 +1,8 @@
 import { useState } from "react"
-import { NOTE_COLORS, CHORD_TYPES, TEXT } from "../constants"
+import { NOTE_COLORS, CHORD_TYPES, TEXT, NOTE_FR } from "../constants"
 import { ChordChip } from "./ChordChip"
 
-export function ChordGrid({ groupedChords, allChords, selectedChordName, timelineNameSet, suggestions, showSuggestions, onChordClick, onChordContextMenu, onChordDragStart }) {
+export function ChordGrid({ groupedChords, allChords, selectedChordName, timelineNameSet, suggestions, showSuggestions, notation = "english", onChordClick, onChordContextMenu, onChordDragStart }) {
   const [hiddenTypes, setHiddenTypes] = useState(new Set())
 
   function toggleType(suffix) {
@@ -63,12 +63,13 @@ export function ChordGrid({ groupedChords, allChords, selectedChordName, timelin
         {groupedChords.map(group => (
           <div key={group.note} style={{ display: "grid", gridTemplateColumns: COLS, gap: "3px 3px", alignItems: "center" }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: NOTE_COLORS[group.note], textAlign: "right", paddingRight: 2 }}>
-              {group.note}
+              {notation === "french" ? (NOTE_FR[group.note] ?? group.note) : group.note}
             </span>
             {group.chords.filter(c => !hiddenTypes.has(c.name.slice(c.root.length))).map(chord => (
               <ChordChip
                 key={chord.name}
                 chord={chord}
+                notation={notation}
                 isActive={selectedChordName === chord.name}
                 isInTimeline={timelineNameSet.has(chord.name)}
                 suggestionScore={showSuggestions ? (suggestions.get(chord.name) ?? 0) : 0}

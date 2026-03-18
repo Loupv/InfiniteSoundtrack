@@ -1,10 +1,13 @@
 import { NOTE_COLORS, TEXT, SUGGESTION_STYLE } from "../constants"
+import { chordDisplayName } from "../musicUtils"
 
 export function ChordChip({
   chord, isActive, isInTimeline, suggestionScore = 0,
+  notation = "english",
   draggable, onDragStart, onClick, onContextMenu,
 }) {
   const color = NOTE_COLORS[chord.root] ?? "#888"
+  const displayName = chordDisplayName(chord.name, chord.root, notation)
   const has   = suggestionScore > 0
 
   // Much stronger visual graduation:
@@ -37,7 +40,7 @@ export function ChordChip({
       onDragStart={onDragStart}
       onClick={onClick}
       onContextMenu={onContextMenu}
-      title={`${chord.name}${has ? ` · suggestion ${Math.round(suggestionScore * 100)}%` : ""}`}
+      title={`${displayName}${has ? ` · suggestion ${Math.round(suggestionScore * 100)}%` : ""}`}
       style={{
         display: "inline-flex", alignItems: "center", justifyContent: "center",
         padding: "4px 7px", minWidth: 42, minHeight: 30, borderRadius: 6,
@@ -47,7 +50,7 @@ export function ChordChip({
         transition: "background 0.15s, border 0.15s, color 0.15s, box-shadow 0.15s",
       }}
     >
-      {chord.name}
+      {displayName}
     </div>
   )
 }

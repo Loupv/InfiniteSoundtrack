@@ -24,7 +24,7 @@ export function Timeline({
   onRemove, onClear, onTogglePlayback, onLoadSaved, onExportMidi,
   onTimelineDragStart,
   onSlotDragOver, onZoneDragOver, onZoneDragLeave, onZoneDrop,
-  onChordPlay,
+  onChordPlay, notation = "english",
 }) {
   return (
     <section>
@@ -94,6 +94,7 @@ export function Timeline({
                   onPlay={onChordPlay}
                   onRemove={() => onRemove(i)}
                   onDragStart={onTimelineDragStart}
+                  notation={notation}
                 />
                 <div style={{ display: "flex", alignItems: "center" }}>
                   {i < progression.length - 1 && dragOverIndex !== i + 1 && (

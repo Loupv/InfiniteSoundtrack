@@ -1,4 +1,5 @@
 import { NOTE_COLORS, DURATIONS } from "../constants"
+import { chordDisplayName } from "../musicUtils"
 
 export function DropIndicator() {
   return (
@@ -10,9 +11,10 @@ export function DropIndicator() {
   )
 }
 
-export function TimelineChip({ chord, index, isPlaying, onPlay, onRemove, onDragStart }) {
+export function TimelineChip({ chord, index, isPlaying, onPlay, onRemove, onDragStart, notation = "english" }) {
   const color  = NOTE_COLORS[chord.root] ?? "#888"
   const beats  = chord.beats ?? 1
+  const displayName = chordDisplayName(chord.name, chord.root, notation)
   const dur    = DURATIONS.find(d => d.beats === beats) ?? DURATIONS[2]
   // Width scales with duration: 56px per beat, min 44px
   const chipW  = Math.max(44, Math.round(56 * beats))
@@ -38,7 +40,7 @@ export function TimelineChip({ chord, index, isPlaying, onPlay, onRemove, onDrag
           flexDirection: "column", gap: 2,
         }}
       >
-        <span style={{ fontSize: Math.max(9, 13 - Math.max(0, chord.name.length - 4)) }}>{chord.name}</span>
+        <span style={{ fontSize: Math.max(9, 13 - Math.max(0, displayName.length - 4)) }}>{displayName}</span>
         <span style={{ fontSize: 9, opacity: 0.6 }}>{dur.label}</span>
         {(chord.inversion ?? 0) > 0 && (
           <span style={{ fontSize: 8, opacity: 0.7, position: "absolute", bottom: 3, right: 4 }}>

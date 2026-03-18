@@ -35,6 +35,14 @@ export const TEXT = {
 
 export const NOTE_TO_PC = { C:0,"C#":1,D:2,Eb:3,E:4,F:5,"F#":6,G:7,Ab:8,A:9,Bb:10,B:11 }
 
+// French (solfège) note names
+export const NOTE_FR = {
+  "C":"Do","C#":"Do#","D":"Ré","Eb":"Mib","E":"Mi",
+  "F":"Fa","F#":"Fa#","G":"Sol","Ab":"Lab","A":"La","Bb":"Sib","B":"Si",
+}
+// Chromatic scale in French for note cards (index = pitch class 0–11)
+export const PC_NAMES_FR = ["Do","Do#","Ré","Mib","Mi","Fa","Fa#","Sol","Lab","La","Sib","Si"]
+
 export const SUGGESTION_STYLE = {
   BG_ALPHA_MIN:  20,   // visible even for low scores
   BG_ALPHA_RANGE: 200, // range: 20–220

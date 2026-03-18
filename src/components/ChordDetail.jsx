@@ -1,5 +1,5 @@
 import { NOTE_COLORS, TEXT, DURATIONS } from "../constants"
-import { buildChordMidi, midiToPitchClass } from "../musicUtils"
+import { buildChordMidi, midiToPitchClass, chordDisplayName, pcDisplayName } from "../musicUtils"
 
 const PC_NAMES = ["C","C#","D","Eb","E","F","F#","G","Ab","A","Bb","B"]
 
@@ -48,7 +48,7 @@ function SmallBtn({ onClick, children, title, disabled }) {
   )
 }
 
-export function ChordDetail({ chord, octave, inversion, beats = 1, onOctaveChange, onInversionChange, onBeatsChange, onPlay }) {
+export function ChordDetail({ chord, octave, inversion, beats = 1, notation = "english", onOctaveChange, onInversionChange, onBeatsChange, onPlay }) {
   if (!chord) {
     return (
       <div style={{
@@ -68,7 +68,7 @@ export function ChordDetail({ chord, octave, inversion, beats = 1, onOctaveChang
   const midiNotes = buildChordMidi(chord.root, invIntervals).map(m => m + octShift)
 
   const noteCards = midiNotes.map((midi, i) => ({
-    name:     `${PC_NAMES[midiToPitchClass(midi)]}${Math.floor(midi / 12) - 1}`,
+    name:     `${pcDisplayName(midiToPitchClass(midi), notation)}${Math.floor(midi / 12) - 1}`,
     interval: intervalLabel(invIntervals[i]),
     isBass:   i === 0,
   }))
@@ -80,7 +80,7 @@ export function ChordDetail({ chord, octave, inversion, beats = 1, onOctaveChang
     }}>
       {/* Title */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-        <span style={{ fontSize: 16, fontWeight: 700, color, letterSpacing: "0.04em" }}>{chord.name}</span>
+        <span style={{ fontSize: 16, fontWeight: 700, color, letterSpacing: "0.04em" }}>{chordDisplayName(chord.name, chord.root, notation)}</span>
         <span style={{ fontSize: 10, color: TEXT.faint }}>{chord.intervals.length} notes</span>
         <button
           onClick={() => onPlay(chord, octave, inversion)}

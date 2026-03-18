@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 
-import { NOTES, CHORD_TYPES, NOTE_COLORS, SCALES, TEXT, NOTE_TO_PC } from "./constants"
+import { NOTES, CHORD_TYPES, NOTE_COLORS, SCALES, TEXT, NOTE_TO_PC, NOTE_FR } from "./constants"
 import { buildChordMidi, midiToFreq, midiToPitchClass, buildAllChords, buildGroupedChords, recognizeChord } from "./musicUtils"
 import { detectKey, computeSuggestions } from "./engine/suggestions"
 import { downloadMidi } from "./engine/midi"
@@ -14,7 +14,8 @@ import { SoundControls }   from "./components/SoundControls"
 import { ChordGrid }       from "./components/ChordGrid"
 import { ChordDetail }     from "./components/ChordDetail"
 
-const LS_KEY = "chord-explorer-last-progression"
+const LS_KEY      = "chord-explorer-last-progression"
+const LS_NOTATION = "chord-explorer-notation"
 function loadSaved() { try { return JSON.parse(localStorage.getItem(LS_KEY)) ?? [] } catch { return [] } }
 function saveProg(p) { try { localStorage.setItem(LS_KEY, JSON.stringify(p)) } catch {} }
 
@@ -36,6 +37,8 @@ export default function App() {
   const [keyboardActiveNotes, setKeyboardActiveNotes] = useState(new Set())
   const [selectedTimelineId,  setSelectedTimelineId]  = useState(null)
   const [selectedBeats,       setSelectedBeats]       = useState(1)
+  const [notation,            setNotation]            = useState(() => localStorage.getItem(LS_NOTATION) ?? "english")
+  const [showSettings,        setShowSettings]        = useState(false)
 
   const [sound, setSound] = useState({ sustain: 1.8, intensity: 0.75, spread: 0.015, tempo: 90, waveType: "triangle" })
   function setSoundKey(key, val) { setSound(s => ({ ...s, [key]: val })) }
@@ -186,8 +189,10 @@ export default function App() {
     if (!timeline.progression.length) return null
     const { root, scale } = detectKey(timeline.progression)
     const scaleName = SCALES.find(([, s]) => s.join() === scale.join())?.[0] ?? "?"
-    return `${NOTES[root]} ${scaleName}`
-  }, [timeline.progression])
+    const rootName = NOTES[root]
+    const displayRoot = notation === "french" ? (NOTE_FR[rootName] ?? rootName) : rootName
+    return `${displayRoot} ${scaleName}`
+  }, [timeline.progression, notation])
 
   const recognizedChord = useMemo(() => {
     const pcs = new Set([...keyboardActiveNotes].map(k => parseInt(k.split("-")[0])))
@@ -275,12 +280,54 @@ export default function App() {
               </span>
             ))}
           </div>
+          {/* Settings gear */}
+          <div style={{ marginLeft: "auto", position: "relative", flexShrink: 0 }}>
+            <button
+              onClick={() => setShowSettings(s => !s)}
+              title="Paramètres"
+              style={{
+                width: 28, height: 28, borderRadius: 6, border: showSettings ? "1px solid #4a8abf" : "1px solid #2a2a2a",
+                background: showSettings ? "#0e1a24" : "#1a1a1a", color: showSettings ? "#4a8abf" : TEXT.muted,
+                fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+              }}
+            >⚙</button>
+            {showSettings && (
+              <div style={{
+                position: "absolute", top: 34, right: 0, zIndex: 100,
+                background: "#141414", border: "1px solid #2a2a2a", borderRadius: 8,
+                padding: "12px 16px", minWidth: 180, boxShadow: "0 4px 20px #000a",
+              }}>
+                <p style={{ margin: "0 0 8px", fontSize: 10, color: TEXT.muted, letterSpacing: "0.1em" }}>NOTATION</p>
+                {[
+                  { value: "english", label: "English", sub: "C, D, Em, Cmaj7…" },
+                  { value: "french",  label: "Français", sub: "Do, Ré, Mim, Domaj7…" },
+                ].map(({ value, label, sub }) => {
+                  const active = notation === value
+                  return (
+                    <label key={value} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", marginBottom: 6 }}>
+                      <input
+                        type="radio" name="notation" value={value} checked={active}
+                        onChange={() => {
+                          setNotation(value)
+                          try { localStorage.setItem(LS_NOTATION, value) } catch {}
+                        }}
+                        style={{ accentColor: "#4a8abf" }}
+                      />
+                      <span>
+                        <span style={{ fontSize: 12, color: active ? TEXT.primary : TEXT.secondary }}>{label}</span>
+                        <span style={{ fontSize: 10, color: TEXT.faint, marginLeft: 6 }}>{sub}</span>
+                      </span>
+                    </label>
+                  )
+                })}
+              </div>
+            )}
+          </div>
           <a
             href="https://buymeacoffee.com/loupv"
             target="_blank"
             rel="noopener noreferrer"
             style={{
-              marginLeft: "auto",
               display: "inline-flex", alignItems: "center", gap: 5,
               background: "#FFDD00", color: "#000", fontFamily: "inherit",
               fontWeight: 700, fontSize: 11, letterSpacing: "0.05em",
@@ -337,6 +384,7 @@ export default function App() {
             onZoneDragOver={timeline.onZoneDragOver}
             onZoneDragLeave={timeline.onZoneDragLeave}
             onZoneDrop={timeline.onZoneDrop}
+            notation={notation}
           />
         </div>
 
@@ -346,6 +394,7 @@ export default function App() {
           octave={selectedOctave}
           inversion={inversion}
           beats={selectedBeats}
+          notation={notation}
           onOctaveChange={oct => {
             setSelectedOctave(oct)
             if (selectedTimelineId) timeline.updateEntry(selectedTimelineId, { octave: oct })
@@ -392,6 +441,7 @@ export default function App() {
         timelineNameSet={timelineNameSet}
         suggestions={suggestions}
         showSuggestions={showSuggestions}
+        notation={notation}
         onChordClick={handleChordClick}
         onChordContextMenu={handleChordContextMenu}
         onChordDragStart={timeline.onGridDragStart}
