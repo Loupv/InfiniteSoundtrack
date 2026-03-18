@@ -21,7 +21,7 @@ export function Timeline({
   loopMode, isPlaying, playingTimelineId,
   hasSaved, savedProgSummary,
   onToggleSuggestions, onToggleLoop,
-  onRemove, onClear, onTogglePlayback, onLoadSaved, onExportMidi,
+  onRemove, onClear, onTogglePlayback, onLoadSaved, onExportMidi, onRandomize,
   onTimelineDragStart,
   onSlotDragOver, onZoneDragOver, onZoneDragLeave, onZoneDrop,
   onChordPlay, notation = "english",
@@ -37,6 +37,12 @@ export function Timeline({
           </span>
         )}
         <div style={{ display: "flex", gap: 5, marginLeft: "auto", flexWrap: "wrap" }}>
+          <BtnSmall
+            onClick={onRandomize}
+            title={progression.length === 0 ? "Générer 4 accords" : "Ajouter un accord valide"}
+          >
+            ⚄
+          </BtnSmall>
           {progression.length > 0 && (
             <BtnSmall onClick={onToggleSuggestions} highlighted={showSuggestions}>
               {showSuggestions ? "◉ suggest" : "○ suggest"}

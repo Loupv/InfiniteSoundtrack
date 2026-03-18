@@ -227,6 +227,45 @@ export default function App() {
   function handleTogglePlayback() { if (timeline.progression.length) playback.toggle(loopMode) }
   function handleClear() { playback.stop(); timeline.clear() }
   function handleExportMidi() { downloadMidi(timeline.progression, sound.tempo) }
+
+  function handleRandomize() {
+    // Weighted-random pick from top-N suggestions, optionally excluding already-used names
+    function pickWeighted(suggMap, exclude = new Set()) {
+      const candidates = [...suggMap.entries()]
+        .filter(([name]) => !exclude.has(name))
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 12)
+      if (!candidates.length) return null
+      const total = candidates.reduce((s, [, v]) => s + v, 0)
+      let rand = Math.random() * total
+      for (const [name, score] of candidates) {
+        rand -= score
+        if (rand <= 0) return allChords.find(c => c.name === name)
+      }
+      return allChords.find(c => c.name === candidates[0][0])
+    }
+
+    if (timeline.progression.length === 0) {
+      // Start from a random major or minor chord, then chain 3 more
+      const starts = allChords.filter(c =>
+        c.intervals.join(",") === "0,4,7" || c.intervals.join(",") === "0,3,7"
+      )
+      const first = starts[Math.floor(Math.random() * starts.length)]
+      const localProg = [first]
+      for (let i = 0; i < 3; i++) {
+        const suggs = computeSuggestions(localProg, allChords)
+        const next = pickWeighted(suggs, new Set(localProg.map(c => c.name)))
+        if (next) localProg.push(next)
+      }
+      localProg.forEach(c => timeline.addChord(c))
+    } else {
+      // Add 1 chord that fits the existing progression
+      const suggs = computeSuggestions(timeline.progression, allChords)
+      const existing = new Set(timeline.progression.map(e => e.name))
+      const next = pickWeighted(suggs, existing)
+      if (next) timeline.addChord(next)
+    }
+  }
   function handleLoadSaved() {
     if (!savedProg.length) return
     playback.stop()
@@ -376,6 +415,7 @@ export default function App() {
             onTogglePlayback={handleTogglePlayback}
             onClear={handleClear}
             onExportMidi={handleExportMidi}
+            onRandomize={handleRandomize}
             onLoadSaved={handleLoadSaved}
             onRemove={timeline.removeChord}
             onChordPlay={handleTimelineChordPlay}
