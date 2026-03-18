@@ -1,4 +1,5 @@
 import { TEXT } from "../constants"
+import { t } from "../i18n"
 import { TimelineChip, DropIndicator } from "./TimelineChip"
 
 function BtnSmall({ onClick, active = true, highlighted = false, children, title }) {
@@ -30,16 +31,16 @@ export function Timeline({
     <section>
       {/* Header row */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 12, letterSpacing: "0.12em", color: TEXT.muted }}>TIMELINE</span>
+        <span style={{ fontSize: 12, letterSpacing: "0.12em", color: TEXT.muted }}>{t("timeline", notation)}</span>
         {detectedKey && progression.length > 0 && (
           <span style={{ fontSize: 12, color: "#4a8abf" }}>
-            key: <strong>{detectedKey}</strong>
+            {t("key", notation)} <strong>{detectedKey}</strong>
           </span>
         )}
         <div style={{ display: "flex", gap: 5, marginLeft: "auto", flexWrap: "wrap" }}>
           <BtnSmall
             onClick={onRandomize}
-            title={progression.length === 0 ? "Générer 4 accords" : "Ajouter un accord valide"}
+            title={progression.length === 0 ? t("generate4", notation) : t("addChord", notation)}
           >
             ⚄
           </BtnSmall>
@@ -48,19 +49,19 @@ export function Timeline({
               {showSuggestions ? "◉ suggest" : "○ suggest"}
             </BtnSmall>
           )}
-          <BtnSmall onClick={onToggleLoop} highlighted={loopMode} title="Loop — replay continuously">
+          <BtnSmall onClick={onToggleLoop} highlighted={loopMode} title={t("loopTooltip", notation)}>
             ⟳ loop
           </BtnSmall>
           <BtnSmall onClick={onTogglePlayback} active={progression.length > 0}>
             {isPlaying ? "■ stop" : "▶ play"}
           </BtnSmall>
           {progression.length > 0 && (
-            <BtnSmall onClick={onExportMidi} title="Export as MIDI file">
+            <BtnSmall onClick={onExportMidi} title={t("exportMidi", notation)}>
               ↓ midi
             </BtnSmall>
           )}
           {hasSaved && (
-            <BtnSmall onClick={onLoadSaved} title={`Load: ${savedProgSummary}${savedProgSummary ? "…" : ""}`}>
+            <BtnSmall onClick={onLoadSaved} title={`${t("loadPrefix", notation)}${savedProgSummary}${savedProgSummary ? "…" : ""}`}>
               ↩ restore
             </BtnSmall>
           )}
@@ -87,7 +88,7 @@ export function Timeline({
             onDragOver={e => onSlotDragOver(e, 0)}
             style={{ flex: 1, minHeight: 52, display: "flex", alignItems: "center" }}
           >
-            <span style={{ color: TEXT.faint, fontSize: 13 }}>Drag chords here…</span>
+            <span style={{ color: TEXT.faint, fontSize: 13 }}>{t("dragHere", notation)}</span>
           </div>
         ) : (
           <>
@@ -117,7 +118,7 @@ export function Timeline({
       {/* Suggestion hint */}
       {showSuggestions && progression.length > 0 && suggestions.size > 0 && (
         <div style={{ marginTop: 5, fontSize: 11, color: TEXT.muted, lineHeight: 1.5 }}>
-          Chords with a coloured border are suggested next chords — brighter = stronger fit (voice-leading, scale, tritone subs).
+          {t("suggHint", notation)}
         </div>
       )}
     </section>

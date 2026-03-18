@@ -1,5 +1,6 @@
 import { NOTE_COLORS, TEXT, DURATIONS } from "../constants"
 import { buildChordMidi, midiToPitchClass, chordDisplayName, pcDisplayName } from "../musicUtils"
+import { t, durName } from "../i18n"
 
 const PC_NAMES = ["C","C#","D","Eb","E","F","F#","G","Ab","A","Bb","B"]
 
@@ -27,12 +28,12 @@ function invertIntervals(intervals, n) {
   return [...intervals.slice(rot), ...intervals.slice(0, rot).map(i => i + 12)]
 }
 
-function inversionLabel(n, total) {
-  if (n === 0) return "Root"
-  if (n === 1) return "1st inv."
-  if (n === 2) return "2nd inv."
-  if (n === 3) return "3rd inv."
-  return `${n}th inv.`
+function inversionLabel(n, notation) {
+  if (n === 0) return t("invRoot", notation)
+  if (n === 1) return t("inv1st", notation)
+  if (n === 2) return t("inv2nd", notation)
+  if (n === 3) return t("inv3rd", notation)
+  return `${n}th`
 }
 
 function SmallBtn({ onClick, children, title, disabled }) {
@@ -56,7 +57,7 @@ export function ChordDetail({ chord, octave, inversion, beats = 1, notation = "e
         padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "center",
         minWidth: 260, flex: "0 0 260px",
       }}>
-        <span style={{ fontSize: 12, color: TEXT.faint }}>Select a chord</span>
+        <span style={{ fontSize: 12, color: TEXT.faint }}>{t("selectChord", notation)}</span>
       </div>
     )
   }
@@ -111,7 +112,7 @@ export function ChordDetail({ chord, octave, inversion, beats = 1, notation = "e
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {/* Octave */}
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 10, color: TEXT.muted, width: 58, flexShrink: 0 }}>Octave</span>
+          <span style={{ fontSize: 10, color: TEXT.muted, width: 58, flexShrink: 0 }}>{t("octave", notation)}</span>
           <SmallBtn onClick={() => onOctaveChange(Math.max(1, octave - 1))}>−</SmallBtn>
           <span style={{ fontSize: 12, fontWeight: 700, color: TEXT.primary, width: 16, textAlign: "center" }}>{octave}</span>
           <SmallBtn onClick={() => onOctaveChange(Math.min(7, octave + 1))}>+</SmallBtn>
@@ -119,35 +120,35 @@ export function ChordDetail({ chord, octave, inversion, beats = 1, notation = "e
 
         {/* Inversion */}
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 10, color: TEXT.muted, width: 58, flexShrink: 0 }}>Inversion</span>
+          <span style={{ fontSize: 10, color: TEXT.muted, width: 58, flexShrink: 0 }}>{t("inversion", notation)}</span>
           <SmallBtn
             onClick={() => onInversionChange(inversion - 1)}
             disabled={inversion === 0}
-            title="Previous inversion"
+            title={t("prevInversion", notation)}
           >−</SmallBtn>
           <span style={{
             fontSize: 10, color: inversion === 0 ? TEXT.faint : TEXT.primary,
             width: 56, textAlign: "center", flexShrink: 0,
           }}>
-            {inversionLabel(inversion)}
+            {inversionLabel(inversion, notation)}
           </span>
           <SmallBtn
             onClick={() => onInversionChange(inversion + 1)}
             disabled={inversion >= maxInv}
-            title="Next inversion"
+            title={t("nextInversion", notation)}
           >+</SmallBtn>
           {inversion !== 0 && (
             <button
               onClick={() => onInversionChange(0)}
               style={{ fontSize: 9, color: TEXT.faint, background: "none", border: "none", cursor: "pointer", padding: 0 }}
-            >reset</button>
+            >{t("resetInv", notation)}</button>
           )}
         </div>
 
         {/* Duration */}
         {onBeatsChange && (
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 10, color: TEXT.muted, width: 58, flexShrink: 0 }}>Durée</span>
+            <span style={{ fontSize: 10, color: TEXT.muted, width: 58, flexShrink: 0 }}>{t("duration", notation)}</span>
             <div style={{ display: "flex", gap: 3 }}>
               {DURATIONS.map(d => {
                 const active = beats === d.beats
@@ -155,7 +156,7 @@ export function ChordDetail({ chord, octave, inversion, beats = 1, notation = "e
                   <button
                     key={d.beats}
                     onClick={() => onBeatsChange(d.beats)}
-                    title={d.name}
+                    title={durName(d.beats, notation)}
                     style={{
                       width: 32, height: 24, borderRadius: 4, padding: 0,
                       border: active ? `1px solid ${color}` : "1px solid #2e2e2e",

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 
 import { NOTES, CHORD_TYPES, NOTE_COLORS, SCALES, TEXT, NOTE_TO_PC, NOTE_FR } from "./constants"
+import { t } from "./i18n"
 import { buildChordMidi, midiToFreq, midiToPitchClass, buildAllChords, buildGroupedChords, recognizeChord } from "./musicUtils"
 import { detectKey, computeSuggestions } from "./engine/suggestions"
 import { downloadMidi } from "./engine/midi"
@@ -310,7 +311,7 @@ export default function App() {
           </h1>
           <span style={{ fontSize: 11, color: TEXT.faint, letterSpacing: "0.06em", fontWeight: 700 }}>v1.0</span>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {[["Click","play"],["Right-click","add"],["Drag","timeline"],["Space","play/stop"]].map(([k,d]) => (
+            {[["Click", t("clickHint",notation)],["Right-click", t("rclickHint",notation)],["Drag", t("dragHint",notation)],["Space", t("spaceHint",notation)]].map(([k,d]) => (
               <span key={k} style={{ fontSize: 11, color: TEXT.secondary, whiteSpace: "nowrap" }}>
                 <span style={{
                   display: "inline-block", background: "#1e1e1e", border: "1px solid #2e2e2e",
@@ -323,7 +324,7 @@ export default function App() {
           <div style={{ marginLeft: "auto", position: "relative", flexShrink: 0 }}>
             <button
               onClick={() => setShowSettings(s => !s)}
-              title="Paramètres"
+              title={t("settings", notation)}
               style={{
                 width: 28, height: 28, borderRadius: 6, border: showSettings ? "1px solid #4a8abf" : "1px solid #2a2a2a",
                 background: showSettings ? "#0e1a24" : "#1a1a1a", color: showSettings ? "#4a8abf" : TEXT.muted,
@@ -378,10 +379,10 @@ export default function App() {
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
           {[
-            { icon: "♩", title: "BROWSE", body: "168 chords · 12 roots · 14 types. Click to hear." },
-            { icon: "⟶", title: "BUILD",  body: "Drag into timeline. Reorder freely. Key detected live." },
-            { icon: "▶", title: "PLAY",   body: "Space or Play. Tempo & all params apply live." },
-            { icon: "◉", title: "SUGGEST",body: "Coloured border = suggested next chord. Brighter = stronger fit." },
+            { icon: "♩", title: t("browseTitle",notation), body: t("browseBody",notation) },
+            { icon: "⟶", title: t("buildTitle",notation),  body: t("buildBody",notation) },
+            { icon: "▶", title: t("playTitle",notation),   body: t("playBody",notation) },
+            { icon: "◉", title: t("suggestTitle",notation),body: t("suggestBody",notation) },
           ].map(({ icon, title, body }) => (
             <div key={title} style={{ background: "#111", border: "1px solid #1e1e1e", borderRadius: 8, padding: "7px 9px", display: "flex", gap: 7 }}>
               <span style={{ fontSize: 12, color: "#4a8abf", flexShrink: 0 }}>{icon}</span>
