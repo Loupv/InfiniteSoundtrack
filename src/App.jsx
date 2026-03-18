@@ -56,7 +56,7 @@ export default function App() {
   const [notation,            setNotation]            = useState(() => localStorage.getItem(LS_NOTATION) ?? "english")
   const [showSettings,        setShowSettings]        = useState(false)
 
-  const [sound, setSound] = useState({ sustain: 1.8, intensity: 0.75, spread: 0.015, tempo: 90, waveType: "triangle" })
+  const [sound, setSound] = useState({ sustain: 1.8, intensity: 0.75, spread: 0.015, tempo: 90, waveType: "piano" })
   function setSoundKey(key, val) { setSound(s => ({ ...s, [key]: val })) }
 
   const soundRef  = useRef(sound)
@@ -327,10 +327,8 @@ export default function App() {
         @media (max-width: 600px) {
           .kbd-hints { display: none !important; }
           .coffee-btn-header { display: none !important; }
-          .coffee-btn-mobile { display: flex !important; }
           .settings-dropdown { right: auto !important; left: 0 !important; }
         }
-        .coffee-btn-mobile { display: none; }
       `}</style>
 
       {/* ── Header ── */}
@@ -521,23 +519,17 @@ export default function App() {
         onChordDragStart={timeline.onGridDragStart}
       />
 
-      {/* ── Mobile coffee button (end of page) ── */}
-      <a
-        className="coffee-btn-mobile"
-        href="https://buymeacoffee.com/loupv"
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{
-          alignItems: "center", justifyContent: "center", gap: 5,
-          background: "transparent", color: "#888", fontFamily: "inherit",
-          fontWeight: 500, fontSize: 11, letterSpacing: "0.03em",
-          padding: "6px 12px", borderRadius: 6, textDecoration: "none",
-          margin: "12px auto 4px", width: "fit-content",
-          border: "1px solid #333",
-        }}
-      >
-        ☕ Buy me a coffee
-      </a>
+      {/* ── Footer ── */}
+      <div style={{
+        marginTop: 16, padding: "10px",
+        borderTop: "1px solid #1e1e1e",
+        textAlign: "center", fontSize: 10, color: TEXT.faint, letterSpacing: "0.04em",
+      }}>
+        Contact :{" "}
+        <a href="mailto:loup.vuarnesson@pm.me" style={{ color: TEXT.muted, textDecoration: "none" }}>
+          loup.vuarnesson@pm.me
+        </a>
+      </div>
     </div>
   )
 }

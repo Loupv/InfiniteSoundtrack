@@ -8,6 +8,7 @@ const CONTROLS = [
 ]
 
 const WAVE_TYPES = [
+  { value: "piano",    label: "♩ piano" },
   { value: "triangle", label: "△ warm" },
   { value: "sine",     label: "∿ soft" },
   { value: "sawtooth", label: "⊿ bright" },
@@ -26,7 +27,7 @@ export function SoundControls({ values, onChange }) {
           <span style={{ fontSize: 11, color: TEXT.muted, width: 44, flexShrink: 0 }}>Wave</span>
           <div style={{ display: "flex", gap: 4 }}>
             {WAVE_TYPES.map(({ value, label }) => {
-              const active = (values.waveType ?? "triangle") === value
+              const active = (values.waveType ?? "piano") === value
               return (
                 <button
                   key={value}
