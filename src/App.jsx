@@ -20,6 +20,21 @@ const LS_NOTATION = "chord-explorer-notation"
 function loadSaved() { try { return JSON.parse(localStorage.getItem(LS_KEY)) ?? [] } catch { return [] } }
 function saveProg(p) { try { localStorage.setItem(LS_KEY, JSON.stringify(p)) } catch {} }
 
+function pickWeightedName(suggMap, exclude = new Set()) {
+  const candidates = [...suggMap.entries()]
+    .filter(([name]) => !exclude.has(name))
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 12)
+  if (!candidates.length) return null
+  const total = candidates.reduce((s, [, v]) => s + v, 0)
+  let rand = Math.random() * total
+  for (const [name, score] of candidates) {
+    rand -= score
+    if (rand <= 0) return name
+  }
+  return candidates[0][0]
+}
+
 export default function App() {
   const allChords     = useMemo(() => buildAllChords(NOTES, CHORD_TYPES),    [])
   const groupedChords = useMemo(() => buildGroupedChords(NOTES, CHORD_TYPES), [])
@@ -141,6 +156,17 @@ export default function App() {
     onChordStart: useCallback(id  => setPlayingTimelineId(id), []),
   })
 
+  const loopModeRef    = useRef(loopMode)
+  useEffect(() => { loopModeRef.current = loopMode }, [loopMode])
+  const pendingStartRef = useRef(false)
+  // Autoplay after a programmatic progression load
+  useEffect(() => {
+    if (pendingStartRef.current && timeline.progression.length > 0) {
+      pendingStartRef.current = false
+      playback.start(loopModeRef.current)
+    }
+  }, [timeline.progression])
+
   useEffect(() => {
     const handler = e => {
       if (e.code !== "Space") return
@@ -229,42 +255,39 @@ export default function App() {
   function handleClear() { playback.stop(); timeline.clear() }
   function handleExportMidi() { downloadMidi(timeline.progression, sound.tempo) }
 
-  function handleRandomize() {
-    // Weighted-random pick from top-N suggestions, optionally excluding already-used names
-    function pickWeighted(suggMap, exclude = new Set()) {
-      const candidates = [...suggMap.entries()]
-        .filter(([name]) => !exclude.has(name))
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 12)
-      if (!candidates.length) return null
-      const total = candidates.reduce((s, [, v]) => s + v, 0)
-      let rand = Math.random() * total
-      for (const [name, score] of candidates) {
-        rand -= score
-        if (rand <= 0) return allChords.find(c => c.name === name)
-      }
-      return allChords.find(c => c.name === candidates[0][0])
+  function handleRandomize4() {
+    // Always reset to 4 new chords and autoplay
+    playback.stop()
+    const starts = allChords.filter(c =>
+      c.intervals.join(",") === "0,4,7" || c.intervals.join(",") === "0,3,7"
+    )
+    const first = starts[Math.floor(Math.random() * starts.length)]
+    const localProg = [first]
+    for (let i = 0; i < 3; i++) {
+      const suggs = computeSuggestions(localProg, allChords)
+      const name  = pickWeightedName(suggs, new Set(localProg.map(c => c.name)))
+      const next  = name ? allChords.find(c => c.name === name) : null
+      if (next) localProg.push(next)
     }
+    pendingStartRef.current = true
+    timeline.loadProgression(localProg)
+  }
 
-    if (timeline.progression.length === 0) {
-      // Start from a random major or minor chord, then chain 3 more
+  function handleRandomizeOne() {
+    // Add 1 suggested chord and play it immediately
+    const source = timeline.progression.length > 0 ? timeline.progression : (() => {
       const starts = allChords.filter(c =>
         c.intervals.join(",") === "0,4,7" || c.intervals.join(",") === "0,3,7"
       )
-      const first = starts[Math.floor(Math.random() * starts.length)]
-      const localProg = [first]
-      for (let i = 0; i < 3; i++) {
-        const suggs = computeSuggestions(localProg, allChords)
-        const next = pickWeighted(suggs, new Set(localProg.map(c => c.name)))
-        if (next) localProg.push(next)
-      }
-      localProg.forEach(c => timeline.addChord(c))
-    } else {
-      // Add 1 chord that fits the existing progression
-      const suggs = computeSuggestions(timeline.progression, allChords)
-      const existing = new Set(timeline.progression.map(e => e.name))
-      const next = pickWeighted(suggs, existing)
-      if (next) timeline.addChord(next)
+      return [starts[Math.floor(Math.random() * starts.length)]]
+    })()
+    const suggs   = computeSuggestions(source, allChords)
+    const existing = new Set(timeline.progression.map(e => e.name))
+    const name    = pickWeightedName(suggs, existing)
+    const next    = name ? allChords.find(c => c.name === name) : null
+    if (next) {
+      timeline.addChord(next)
+      playChord(next)
     }
   }
   function handleLoadSaved() {
@@ -416,7 +439,8 @@ export default function App() {
             onTogglePlayback={handleTogglePlayback}
             onClear={handleClear}
             onExportMidi={handleExportMidi}
-            onRandomize={handleRandomize}
+            onRandomize={handleRandomize4}
+            onRandomizeOne={handleRandomizeOne}
             onLoadSaved={handleLoadSaved}
             onRemove={timeline.removeChord}
             onChordPlay={handleTimelineChordPlay}

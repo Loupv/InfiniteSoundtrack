@@ -162,8 +162,9 @@ export function ChordDetail({ chord, octave, inversion, beats = 1, notation = "e
                       border: active ? `1px solid ${color}` : "1px solid #2e2e2e",
                       background: active ? `${color}22` : "#1a1a1a",
                       color: active ? color : TEXT.faint,
-                      fontSize: 11, cursor: "pointer",
+                      fontSize: 13, cursor: "pointer",
                       display: "inline-flex", alignItems: "center", justifyContent: "center",
+                      fontFamily: "system-ui, -apple-system, 'Segoe UI Symbol', 'Apple Symbols', sans-serif",
                     }}
                   >{d.label}</button>
                 )

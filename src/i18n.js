@@ -21,8 +21,8 @@ const TRANSLATIONS = {
     // Timeline
     timeline:      "TIMELINE",
     key:           "key:",
-    generate4:     "Generate 4 chords",
-    addChord:      "Add a valid chord",
+    generate4:     "Generate 4 chords (reset)",
+    addOne:        "Add a chord",
     loopTooltip:   "Loop — replay continuously",
     exportMidi:    "Export as MIDI file",
     loadPrefix:    "Load: ",
@@ -66,8 +66,8 @@ const TRANSLATIONS = {
     // Timeline
     timeline:      "SÉQUENCE",
     key:           "ton :",
-    generate4:     "Générer 4 accords",
-    addChord:      "Ajouter un accord valide",
+    generate4:     "Générer 4 accords (reset)",
+    addOne:        "Ajouter un accord",
     loopTooltip:   "Boucle — rejouer en continu",
     exportMidi:    "Exporter en fichier MIDI",
     loadPrefix:    "Charger : ",

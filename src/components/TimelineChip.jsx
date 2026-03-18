@@ -41,7 +41,7 @@ export function TimelineChip({ chord, index, isPlaying, onPlay, onRemove, onDrag
         }}
       >
         <span style={{ fontSize: Math.max(9, 13 - Math.max(0, displayName.length - 4)) }}>{displayName}</span>
-        <span style={{ fontSize: 9, opacity: 0.6 }}>{dur.label}</span>
+        <span style={{ fontSize: 11, opacity: 0.6, fontFamily: "system-ui, -apple-system, 'Segoe UI Symbol', 'Apple Symbols', sans-serif" }}>{dur.label}</span>
         {(chord.inversion ?? 0) > 0 && (
           <span style={{ fontSize: 8, opacity: 0.7, position: "absolute", bottom: 3, right: 4 }}>
             {chord.inversion === 1 ? "1st" : chord.inversion === 2 ? "2nd" : chord.inversion === 3 ? "3rd" : `${chord.inversion}th`}
