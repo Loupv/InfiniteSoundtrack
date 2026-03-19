@@ -2,7 +2,7 @@ import { useState } from "react"
 import { NOTE_COLORS, CHORD_TYPES, TEXT, NOTE_FR } from "../constants"
 import { ChordChip } from "./ChordChip"
 
-export function ChordGrid({ groupedChords, allChords, selectedChordName, timelineNameSet, suggestions, showSuggestions, notation = "english", onChordClick, onChordContextMenu, onChordDragStart }) {
+export function ChordGrid({ groupedChords, allChords, selectedChordName, timelineNameSet, suggestions, showSuggestions, notation = "english", onChordClick, onChordContextMenu }) {
   const [hiddenTypes, setHiddenTypes] = useState(new Set())
 
   function toggleType(suffix) {
@@ -73,8 +73,6 @@ export function ChordGrid({ groupedChords, allChords, selectedChordName, timelin
                 isActive={selectedChordName === chord.name}
                 isInTimeline={timelineNameSet.has(chord.name)}
                 suggestionScore={showSuggestions ? (suggestions.get(chord.name) ?? 0) : 0}
-                draggable
-                onDragStart={e => onChordDragStart(e, chord)}
                 onClick={() => onChordClick(chord)}
                 onContextMenu={e => { e.preventDefault(); onChordContextMenu(chord) }}
               />

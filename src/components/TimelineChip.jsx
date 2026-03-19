@@ -1,32 +1,43 @@
+import { useSortable } from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 import { NOTE_COLORS, DURATIONS } from "../constants"
 import { chordDisplayName } from "../musicUtils"
 
-export function DropIndicator() {
-  return (
-    <div style={{
-      width: 2, alignSelf: "stretch", minHeight: 52,
-      background: "#4a8abf", borderRadius: 2,
-      boxShadow: "0 0 6px #4a8abf", flexShrink: 0,
-    }} />
-  )
-}
-
-export function TimelineChip({ chord, index, isPlaying, onPlay, onRemove, onDragStart, notation = "english" }) {
-  const color  = NOTE_COLORS[chord.root] ?? "#888"
-  const beats  = chord.beats ?? 1
+export function TimelineChip({ chord, isPlaying, onPlay, onRemove, notation = "english" }) {
+  const color       = NOTE_COLORS[chord.root] ?? "#888"
+  const beats       = chord.beats ?? 1
   const displayName = chordDisplayName(chord.name, chord.root, notation)
-  const dur    = DURATIONS.find(d => d.beats === beats) ?? DURATIONS[2]
-  // Width scales proportionally with duration: 72px per beat
-  const chipW  = Math.max(28, Math.min(200, Math.round(72 * beats)))
+  const dur         = DURATIONS.find(d => d.beats === beats) ?? DURATIONS[2]
+  const chipW       = Math.max(28, Math.min(200, Math.round(72 * beats)))
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: chord.id })
 
   return (
     <div
-      draggable
-      onDragStart={e => onDragStart(e, index)}
-      style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "grab" }}
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+        display: "inline-flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 4,
+        cursor: isDragging ? "grabbing" : "grab",
+        touchAction: "none",
+      }}
+      {...attributes}
+      {...listeners}
     >
       <div
-        onClick={() => onPlay(chord)}
+        onClick={e => { e.stopPropagation(); onPlay(chord) }}
         style={{
           position: "relative",
           display: "inline-flex", alignItems: "center", justifyContent: "center",
@@ -49,7 +60,8 @@ export function TimelineChip({ chord, index, isPlaying, onPlay, onRemove, onDrag
         )}
       </div>
       <button
-        onClick={onRemove}
+        onClick={e => { e.stopPropagation(); onRemove() }}
+        onPointerDown={e => e.stopPropagation()}
         style={{
           width: 16, height: 16, borderRadius: "50%", border: "1px solid #333",
           background: "#1e1e1e", color: "#777", fontSize: 9,

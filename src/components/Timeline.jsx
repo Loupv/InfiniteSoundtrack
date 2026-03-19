@@ -1,6 +1,8 @@
+import { useDroppable } from "@dnd-kit/core"
+import { SortableContext, horizontalListSortingStrategy } from "@dnd-kit/sortable"
 import { TEXT } from "../constants"
 import { t } from "../i18n"
-import { TimelineChip, DropIndicator } from "./TimelineChip"
+import { TimelineChip } from "./TimelineChip"
 
 function BtnSmall({ onClick, active = true, highlighted = false, children, title }) {
   return (
@@ -17,16 +19,16 @@ function BtnSmall({ onClick, active = true, highlighted = false, children, title
 }
 
 export function Timeline({
-  progression, dragOverIndex, timelineDropActive,
+  progression,
   detectedKey, showSuggestions, suggestions,
   loopMode, isPlaying, playingTimelineId,
   hasSaved, savedProgSummary,
   onToggleSuggestions, onToggleLoop,
   onRemove, onClear, onTogglePlayback, onLoadSaved, onExportMidi, onRandomize, onRandomizeOne,
-  onTimelineDragStart,
-  onSlotDragOver, onZoneDragOver, onZoneDragLeave, onZoneDrop,
   onChordPlay, notation = "english",
 }) {
+  const { setNodeRef, isOver } = useDroppable({ id: "timeline-zone" })
+
   return (
     <section>
       {/* Header row */}
@@ -66,50 +68,39 @@ export function Timeline({
       </div>
 
       {/* Drop zone */}
-      <div
-        onDragOver={onZoneDragOver}
-        onDragLeave={onZoneDragLeave}
-        onDrop={onZoneDrop}
-        style={{
-          minHeight: 80, borderRadius: 10,
-          border: timelineDropActive ? "1.5px dashed #4a8abf" : "1.5px dashed #222",
-          background: timelineDropActive ? "#0a1520" : "#0f0f0f",
-          padding: "8px 10px",
-          display: "flex", alignItems: "center", gap: 0, flexWrap: "wrap",
-          transition: "border 0.12s, background 0.12s",
-        }}
-      >
-        {progression.length === 0 ? (
-          <div
-            onDragOver={e => onSlotDragOver(e, 0)}
-            style={{ flex: 1, minHeight: 52, display: "flex", alignItems: "center" }}
-          >
+      <SortableContext items={progression.map(e => e.id)} strategy={horizontalListSortingStrategy}>
+        <div
+          ref={setNodeRef}
+          style={{
+            minHeight: 80, borderRadius: 10,
+            border: isOver ? "1.5px dashed #4a8abf" : "1.5px dashed #222",
+            background: isOver ? "#0a1520" : "#0f0f0f",
+            padding: "8px 10px",
+            display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap",
+            transition: "border 0.12s, background 0.12s",
+          }}
+        >
+          {progression.length === 0 ? (
             <span style={{ color: TEXT.faint, fontSize: 13 }}>{t("dragHere", notation)}</span>
-          </div>
-        ) : (
-          <>
-            <Slot index={0} dragOverIndex={dragOverIndex} onSlotDragOver={onSlotDragOver} />
-            {progression.map((entry, i) => (
+          ) : (
+            progression.map((entry, i) => (
               <div key={entry.id} style={{ display: "flex", alignItems: "center" }}>
                 <TimelineChip
-                  chord={entry} index={i}
+                  chord={entry}
+                  index={i}
                   isPlaying={playingTimelineId === entry.id}
                   onPlay={onChordPlay}
                   onRemove={() => onRemove(i)}
-                  onDragStart={onTimelineDragStart}
                   notation={notation}
                 />
-                <div style={{ display: "flex", alignItems: "center" }}>
-                  {i < progression.length - 1 && dragOverIndex !== i + 1 && (
-                    <span style={{ color: TEXT.faint, fontSize: 14, userSelect: "none", margin: "0 2px" }}>›</span>
-                  )}
-                  <Slot index={i + 1} dragOverIndex={dragOverIndex} onSlotDragOver={onSlotDragOver} />
-                </div>
+                {i < progression.length - 1 && (
+                  <span style={{ color: TEXT.faint, fontSize: 14, userSelect: "none", margin: "0 2px" }}>›</span>
+                )}
               </div>
-            ))}
-          </>
-        )}
-      </div>
+            ))
+          )}
+        </div>
+      </SortableContext>
 
       {/* Suggestion hint */}
       {showSuggestions && progression.length > 0 && suggestions.size > 0 && (
@@ -118,21 +109,5 @@ export function Timeline({
         </div>
       )}
     </section>
-  )
-}
-
-function Slot({ index, dragOverIndex, onSlotDragOver }) {
-  const active = dragOverIndex === index
-  return (
-    <div
-      onDragOver={e => onSlotDragOver(e, index)}
-      style={{
-        width: active ? 14 : 6, height: 52,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        flexShrink: 0, transition: "width 0.1s",
-      }}
-    >
-      {active && <DropIndicator />}
-    </div>
   )
 }

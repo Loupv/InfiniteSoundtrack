@@ -1,4 +1,10 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react"
+import {
+  DndContext, DragOverlay,
+  PointerSensor, TouchSensor,
+  useSensor, useSensors,
+  closestCenter,
+} from "@dnd-kit/core"
 
 import { NOTES, CHORD_TYPES, NOTE_COLORS, SCALES, TEXT, NOTE_TO_PC, NOTE_FR } from "./constants"
 import { t } from "./i18n"
@@ -66,7 +72,52 @@ export default function App() {
   const beatMsRef = useRef(beatMs)
   useEffect(() => { beatMsRef.current = beatMs }, [beatMs])
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor,   { activationConstraint: { delay: 150, tolerance: 5 } }),
+  )
+
+  const [activeDragData, setActiveDragData] = useState(null)
+
   const timeline       = useTimeline()
+  function handleDragStart({ active }) {
+    setActiveDragData(active.data.current ?? null)
+  }
+
+  function handleDragEnd({ active, over }) {
+    setActiveDragData(null)
+    if (!over) return
+
+    const activeId = active.id
+    const overId   = over.id
+
+    // Grid chip → timeline
+    if (typeof activeId === "string" && activeId.startsWith("grid:")) {
+      const chord = active.data.current?.chord
+      if (!chord) return
+      if (overId === "timeline-zone") {
+        timeline.addChord(chord)
+      } else {
+        const overIndex = timeline.progression.findIndex(e => e.id === overId)
+        if (overIndex !== -1) {
+          timeline.insertChordAt(chord, overIndex)
+        } else {
+          timeline.addChord(chord)
+        }
+      }
+      return
+    }
+
+    // Timeline reorder
+    if (activeId !== overId) {
+      const oldIndex = timeline.progression.findIndex(e => e.id === activeId)
+      const newIndex = timeline.progression.findIndex(e => e.id === overId)
+      if (oldIndex !== -1 && newIndex !== -1) {
+        timeline.reorderChords(oldIndex, newIndex)
+      }
+    }
+  }
+
   const progressionRef = useRef([])
   useEffect(() => {
     progressionRef.current = timeline.progression
@@ -312,6 +363,12 @@ export default function App() {
   )
 
   return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
     <div style={{
       fontFamily: "'Courier New', monospace",
       padding: "12px 16px 24px",
@@ -339,9 +396,9 @@ export default function App() {
       <div style={{ marginBottom: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 8, flexWrap: "wrap" }}>
           <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, letterSpacing: "0.08em", color: "#fff" }}>
-            CHORD EXPLORER
+            CHORDS EXPLORER
           </h1>
-          <span style={{ fontSize: 11, color: TEXT.faint, letterSpacing: "0.06em", fontWeight: 700 }}>v1.1</span>
+          <span style={{ fontSize: 11, color: TEXT.faint, letterSpacing: "0.06em", fontWeight: 700 }}>v1.2</span>
           <div className="kbd-hints" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {[["Click", t("clickHint",notation)],["Right-click", t("rclickHint",notation)],["Drag", t("dragHint",notation)],["Space", t("spaceHint",notation)]].map(([k,d]) => (
               <span key={k} style={{ fontSize: 11, color: TEXT.secondary, whiteSpace: "nowrap" }}>
@@ -435,8 +492,6 @@ export default function App() {
         <div style={{ flex: "1 1 300px", minWidth: 0 }}>
           <Timeline
             progression={timeline.progression}
-            dragOverIndex={timeline.dragOverIndex}
-            timelineDropActive={timeline.timelineDropActive}
             detectedKey={detectedKey}
             showSuggestions={showSuggestions}
             suggestions={suggestions}
@@ -455,11 +510,6 @@ export default function App() {
             onLoadSaved={handleLoadSaved}
             onRemove={timeline.removeChord}
             onChordPlay={handleTimelineChordPlay}
-            onTimelineDragStart={timeline.onTimelineDragStart}
-            onSlotDragOver={timeline.onSlotDragOver}
-            onZoneDragOver={timeline.onZoneDragOver}
-            onZoneDragLeave={timeline.onZoneDragLeave}
-            onZoneDrop={timeline.onZoneDrop}
             notation={notation}
           />
         </div>
@@ -520,7 +570,6 @@ export default function App() {
         notation={notation}
         onChordClick={handleChordClick}
         onChordContextMenu={handleChordContextMenu}
-        onChordDragStart={timeline.onGridDragStart}
       />
 
       {/* ── Footer ── */}
@@ -553,5 +602,25 @@ export default function App() {
         </a>
       </div>
     </div>
+
+    {/* Drag overlay — floating chip that follows the cursor/finger */}
+    <DragOverlay dropAnimation={null}>
+      {activeDragData?.type === "grid" && activeDragData.chord ? (
+        <div style={{
+          display: "inline-flex", alignItems: "center", justifyContent: "center",
+          padding: "4px 7px", minWidth: 42, minHeight: 30, borderRadius: 6,
+          fontSize: 12, fontFamily: "'Courier New', monospace", fontWeight: 700,
+          letterSpacing: "0.03em", userSelect: "none",
+          background: NOTE_COLORS[activeDragData.chord.root] ?? "#888",
+          color: "#fff",
+          border: `2px solid ${NOTE_COLORS[activeDragData.chord.root] ?? "#888"}`,
+          boxShadow: `0 4px 16px ${NOTE_COLORS[activeDragData.chord.root] ?? "#888"}66`,
+          cursor: "grabbing",
+        }}>
+          {activeDragData.chord.root}{activeDragData.chord.name.slice(activeDragData.chord.root.length)}
+        </div>
+      ) : null}
+    </DragOverlay>
+    </DndContext>
   )
 }
