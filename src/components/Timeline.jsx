@@ -23,6 +23,8 @@ export function Timeline({
   detectedKey, showSuggestions, suggestions,
   loopMode, isPlaying, playingTimelineId,
   hasSaved, savedProgSummary,
+  canUndo, onUndo,
+  shareCopied, onShare,
   onToggleSuggestions, onToggleLoop,
   onRemove, onClear, onTogglePlayback, onLoadSaved, onExportMidi, onRandomize, onRandomizeOne,
   onChordPlay, notation = "english",
@@ -63,6 +65,12 @@ export function Timeline({
               ↩ restore
             </BtnSmall>
           )}
+          {progression.length > 0 && (
+            <BtnSmall onClick={onShare} highlighted={shareCopied}>
+              {shareCopied ? "✓ copied!" : "⤴ share"}
+            </BtnSmall>
+          )}
+          <BtnSmall onClick={onUndo} active={canUndo} title="Undo">↩︎</BtnSmall>
           <BtnSmall onClick={onClear}>✕</BtnSmall>
         </div>
       </div>

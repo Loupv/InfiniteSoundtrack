@@ -12,10 +12,9 @@ export function useAudio({ soundRef, onNotesPlayed, onNotesClear }) {
   }
 
   const playChord = useCallback(async (chord) => {
-    const { sustain, intensity, spread, waveType = "triangle" } = soundRef.current
+    const { sustain, intensity, spread, waveType = "default" } = soundRef.current
     const midiNotes = await getEngine().play(chord, { sustain, intensity, spread, waveType })
-    // Pass {pc, oct} objects so the keyboard can highlight per octave
-    const noteObjs = midiNotes.map(midi => ({
+    const noteObjs  = midiNotes.map(midi => ({
       pc:  midiToPitchClass(midi),
       oct: Math.floor(midi / 12) - 1,
     }))
@@ -25,5 +24,9 @@ export function useAudio({ soundRef, onNotesPlayed, onNotesClear }) {
     clearTimRef.current = setTimeout(onNotesClear, Math.max(250, sustain * 1000))
   }, [soundRef, onNotesPlayed, onNotesClear])
 
-  return { playChord }
+  const preload = useCallback((waveType) => {
+    getEngine().preload(waveType)
+  }, [])
+
+  return { playChord, preload }
 }

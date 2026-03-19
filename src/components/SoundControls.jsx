@@ -8,13 +8,13 @@ const CONTROLS = [
 ]
 
 const WAVE_TYPES = [
-  { value: "piano",    label: "♩ piano" },
-  { value: "triangle", label: "△ warm" },
-  { value: "sine",     label: "∿ soft" },
-  { value: "sawtooth", label: "⊿ bright" },
+  { value: "default", label: "default", sf: false },
+  { value: "piano",   label: "piano",   sf: true  },
+  { value: "harp",    label: "harp",    sf: true  },
+  { value: "marimba", label: "marimba", sf: true  },
 ]
 
-export function SoundControls({ values, onChange }) {
+export function SoundControls({ values, onChange, loadingInstrument }) {
   return (
     <div style={{
       background: "#0f0f0f", borderRadius: 10, border: "1px solid #1e1e1e",
@@ -25,9 +25,10 @@ export function SoundControls({ values, onChange }) {
         {/* Wave type */}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 11, color: TEXT.muted, width: 44, flexShrink: 0 }}>Wave</span>
-          <div style={{ display: "flex", gap: 4 }}>
-            {WAVE_TYPES.map(({ value, label }) => {
-              const active = (values.waveType ?? "piano") === value
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+            {WAVE_TYPES.map(({ value, label, sf }) => {
+              const active   = (values.waveType ?? "default") === value
+              const loading  = active && sf && loadingInstrument
               return (
                 <button
                   key={value}
@@ -35,12 +36,15 @@ export function SoundControls({ values, onChange }) {
                   style={{
                     padding: "2px 7px", borderRadius: 4, fontSize: 10,
                     fontFamily: "'Courier New', monospace", cursor: "pointer",
-                    border: active ? "1px solid #4a8abf" : "1px solid #2a2a2a",
-                    background: active ? "#0e1a24" : "#1a1a1a",
-                    color: active ? "#4a8abf" : TEXT.muted,
+                    border:      active ? "1px solid #4a8abf" : "1px solid #2a2a2a",
+                    background:  active ? "#0e1a24"           : "#1a1a1a",
+                    color:       active ? "#4a8abf"           : TEXT.muted,
                     transition: "all 0.12s",
+                    opacity: loading ? 0.7 : 1,
                   }}
-                >{label}</button>
+                >
+                  {loading ? "⟳ …" : label}
+                </button>
               )
             })}
           </div>

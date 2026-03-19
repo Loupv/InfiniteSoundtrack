@@ -1,7 +1,7 @@
 import { buildChordMidi, midiToFreq } from "../musicUtils"
 
-// Harmonic partials for piano synthesis
-// Slight inharmonicity mimics real piano string stiffness
+// ── Default synth (oscillator piano) ─────────────────────────────────────────
+
 const PIANO_HARMONICS = [
   { ratio: 1.0000, gain: 1.00 },
   { ratio: 2.0006, gain: 0.50 },
@@ -11,8 +11,7 @@ const PIANO_HARMONICS = [
   { ratio: 6.0100, gain: 0.03 },
 ]
 
-function playPianoNote(ac, freq, now, dur, perNoteLevel, dest) {
-  // Brightness filter: wide on attack (hammer strike), narrows as note decays
+function playDefaultNote(ac, freq, now, dur, perNoteLevel, dest) {
   const filter = ac.createBiquadFilter()
   filter.type = "lowpass"
   filter.Q.value = 0.7
@@ -24,21 +23,20 @@ function playPianoNote(ac, freq, now, dur, perNoteLevel, dest) {
   filter.frequency.exponentialRampToValueAtTime(endFreq, now + Math.min(dur * 0.5, 1.5))
   filter.connect(dest)
 
-  // Piano ADSR: fast attack, quick initial decay, slow sustain tail
   const env = ac.createGain()
   env.gain.setValueAtTime(0.0001, now)
-  env.gain.exponentialRampToValueAtTime(perNoteLevel, now + 0.005)       // attack
-  env.gain.exponentialRampToValueAtTime(perNoteLevel * 0.65, now + 0.07) // initial decay
-  env.gain.exponentialRampToValueAtTime(perNoteLevel * 0.35, now + 0.3)  // mid decay
-  env.gain.exponentialRampToValueAtTime(0.0001, now + dur)               // release
+  env.gain.exponentialRampToValueAtTime(perNoteLevel, now + 0.005)
+  env.gain.exponentialRampToValueAtTime(perNoteLevel * 0.65, now + 0.07)
+  env.gain.exponentialRampToValueAtTime(perNoteLevel * 0.35, now + 0.3)
+  env.gain.exponentialRampToValueAtTime(0.0001, now + dur)
   env.connect(filter)
 
   PIANO_HARMONICS.forEach(({ ratio, gain: hGain }) => {
-    const osc  = ac.createOscillator()
+    const osc   = ac.createOscillator()
     const gNode = ac.createGain()
     osc.type = "sine"
     osc.frequency.value = freq * ratio
-    gNode.gain.value = hGain
+    gNode.gain.value    = hGain
     osc.connect(gNode)
     gNode.connect(env)
     osc.start(now)
@@ -46,9 +44,18 @@ function playPianoNote(ac, freq, now, dur, perNoteLevel, dest) {
   })
 }
 
+// ── Soundfont instruments ─────────────────────────────────────────────────────
+
+const SF_NAMES = {
+  piano:   "acoustic_grand_piano",
+  harp:    "orchestral_harp",
+  marimba: "marimba",
+}
+
 export class AudioEngine {
   constructor() {
-    this._ctx = null
+    this._ctx    = null
+    this._sfCache = {} // waveType → Promise<instrument>
   }
 
   _getCtx() {
@@ -56,40 +63,65 @@ export class AudioEngine {
     return this._ctx
   }
 
-  async play(chord, { sustain, intensity, spread, waveType = "piano" }) {
+  // Preload a soundfont instrument (call when user selects it)
+  async preload(waveType) {
+    if (!SF_NAMES[waveType]) return
+    const ac = this._getCtx()
+    if (!this._sfCache[waveType]) {
+      const Soundfont = (await import("soundfont-player")).default
+      this._sfCache[waveType] = Soundfont.instrument(ac, SF_NAMES[waveType], {
+        format: "mp3",
+        soundfont: "MusyngKite",
+      })
+    }
+    return this._sfCache[waveType]
+  }
+
+  async play(chord, { sustain, intensity, spread, waveType = "default" }) {
     const ac = this._getCtx()
     if (ac.state === "suspended") await ac.resume()
 
-    const now  = ac.currentTime
-    const dur  = Math.max(0.25, sustain)
-
+    const now       = ac.currentTime
+    const dur       = Math.max(0.25, sustain)
     const midiNotes = buildChordMidi(chord.root, chord.intervals)
-    const perNoteLevel = (intensity * 0.55) / Math.max(midiNotes.length, 3)
 
-    if (waveType === "piano") {
+    // ── Soundfont ──
+    if (SF_NAMES[waveType]) {
+      const instrument = await this.preload(waveType)
+      const gain = (intensity * 1.6) / Math.max(midiNotes.length, 3)
       midiNotes.forEach((midi, i) => {
-        playPianoNote(ac, midiToFreq(midi), now + i * spread, dur, perNoteLevel, ac.destination)
+        instrument.play(midi, now + i * spread, { duration: dur, gain })
       })
-    } else {
-      // Classic oscillator modes
-      const master = ac.createGain()
-      master.gain.setValueAtTime(0.0001, now)
-      master.gain.exponentialRampToValueAtTime(0.15 + intensity * 0.35, now + 0.03)
-      master.gain.exponentialRampToValueAtTime(0.0001, now + dur)
-      master.connect(ac.destination)
-
-      midiNotes.forEach((midi, i) => {
-        const osc  = ac.createOscillator()
-        const gain = ac.createGain()
-        osc.type            = waveType
-        osc.frequency.value = midiToFreq(midi)
-        gain.gain.value     = (0.65 * intensity) / Math.max(midiNotes.length, 3)
-        osc.connect(gain)
-        gain.connect(master)
-        osc.start(now + i * spread)
-        osc.stop(now + dur)
-      })
+      return midiNotes
     }
+
+    // ── Default synth ──
+    const perNoteLevel = (intensity * 0.55) / Math.max(midiNotes.length, 3)
+    if (waveType === "default") {
+      midiNotes.forEach((midi, i) => {
+        playDefaultNote(ac, midiToFreq(midi), now + i * spread, dur, perNoteLevel, ac.destination)
+      })
+      return midiNotes
+    }
+
+    // ── Oscillator (warm) ──
+    const master = ac.createGain()
+    master.gain.setValueAtTime(0.0001, now)
+    master.gain.exponentialRampToValueAtTime(0.15 + intensity * 0.35, now + 0.03)
+    master.gain.exponentialRampToValueAtTime(0.0001, now + dur)
+    master.connect(ac.destination)
+
+    midiNotes.forEach((midi, i) => {
+      const osc  = ac.createOscillator()
+      const gain = ac.createGain()
+      osc.type            = waveType  // "triangle"
+      osc.frequency.value = midiToFreq(midi)
+      gain.gain.value     = (0.65 * intensity) / Math.max(midiNotes.length, 3)
+      osc.connect(gain)
+      gain.connect(master)
+      osc.start(now + i * spread)
+      osc.stop(now + dur)
+    })
 
     return midiNotes
   }

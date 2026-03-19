@@ -30,6 +30,29 @@ function track(eventName, params = {}) {
   try { window.gtag?.("event", eventName, params) } catch {}
 }
 
+function encodeProgression(progression) {
+  const data = progression.map(e => {
+    const obj = { n: e.name }
+    if ((e.beats     ?? 1) !== 1) obj.b = e.beats
+    if ((e.octave    ?? 4) !== 4) obj.o = e.octave
+    if ((e.inversion ?? 0) !== 0) obj.i = e.inversion
+    return obj
+  })
+  return btoa(JSON.stringify(data))
+}
+
+function decodeProgression(encoded, allChords) {
+  try {
+    const data = JSON.parse(atob(encoded))
+    if (!Array.isArray(data)) return null
+    return data.map(item => {
+      const chord = allChords.find(c => c.name === item.n)
+      if (!chord) return null
+      return { ...chord, beats: item.b ?? 1, octave: item.o ?? 4, inversion: item.i ?? 0 }
+    }).filter(Boolean)
+  } catch { return null }
+}
+
 function pickWeightedName(suggMap, exclude = new Set()) {
   const candidates = [...suggMap.entries()]
     .filter(([name]) => !exclude.has(name))
@@ -66,8 +89,25 @@ export default function App() {
   const [notation,            setNotation]            = useState(() => localStorage.getItem(LS_NOTATION) ?? "english")
   const [showSettings,        setShowSettings]        = useState(false)
 
-  const [sound, setSound] = useState({ sustain: 1.8, intensity: 0.75, spread: 0.015, tempo: 90, waveType: "piano" })
-  function setSoundKey(key, val) { setSound(s => ({ ...s, [key]: val })) }
+  const [shareCopied, setShareCopied] = useState(false)
+
+  const [sound, setSound] = useState({ sustain: 1.8, intensity: 0.75, spread: 0.015, tempo: 90, waveType: "default" })
+  const [loadingInstrument, setLoadingInstrument] = useState(false)
+
+  function setSoundKey(key, val) {
+    setSound(s => ({ ...s, [key]: val }))
+    if (key === "waveType") {
+      const SF = { piano: true, harp: true, marimba: true }
+      if (SF[val]) {
+        setLoadingInstrument(true)
+        preload(val)
+        // resolve loading once first chord plays, or after timeout
+        setTimeout(() => setLoadingInstrument(false), 3000)
+      } else {
+        setLoadingInstrument(false)
+      }
+    }
+  }
 
   const soundRef  = useRef(sound)
   useEffect(() => { soundRef.current = sound }, [sound])
@@ -123,6 +163,25 @@ export default function App() {
     }
   }
 
+  // Load progression from URL on startup
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const encoded = params.get("p")
+    if (!encoded) return
+    const prog = decodeProgression(encoded, allChords)
+    if (prog?.length) timeline.loadProgression(prog)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleShare() {
+    const encoded = encodeProgression(timeline.progression)
+    const url = `${window.location.origin}${window.location.pathname}?p=${encoded}`
+    navigator.clipboard.writeText(url).then(() => {
+      setShareCopied(true)
+      setTimeout(() => setShareCopied(false), 2000)
+      track("progression_shared", { chord_count: timeline.progression.length })
+    })
+  }
+
   const progressionRef = useRef([])
   useEffect(() => {
     progressionRef.current = timeline.progression
@@ -146,7 +205,7 @@ export default function App() {
     return audioCtxRef.current
   }
 
-  const { playChord } = useAudio({
+  const { playChord, preload } = useAudio({
     soundRef,
     onNotesPlayed: useCallback(notes => setCurrentPlayedNotes(notes), []),
     onNotesClear:  useCallback(()    => setCurrentPlayedNotes([]),    []),
@@ -353,7 +412,7 @@ export default function App() {
     if (next) {
       timeline.addChord(next)
       playChord(next)
-      track("chord_added", { chord_name: next.name, method: "randomize_one" })
+      track("chord_randomized_one", { chord_name: next.name })
     }
   }
   function handleLoadSaved() {
@@ -413,7 +472,7 @@ export default function App() {
           <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, letterSpacing: "0.08em", color: "#fff" }}>
             CHORDS EXPLORER
           </h1>
-          <span style={{ fontSize: 11, color: TEXT.faint, letterSpacing: "0.06em", fontWeight: 700 }}>v1.2</span>
+          <span style={{ fontSize: 11, color: TEXT.faint, letterSpacing: "0.06em", fontWeight: 700 }}>v1.3</span>
           <div className="kbd-hints" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {[["Click", t("clickHint",notation)],["Right-click", t("rclickHint",notation)],["Drag", t("dragHint",notation)],["Space", t("spaceHint",notation)]].map(([k,d]) => (
               <span key={k} style={{ fontSize: 11, color: TEXT.secondary, whiteSpace: "nowrap" }}>
@@ -523,6 +582,10 @@ export default function App() {
             onRandomize={handleRandomize4}
             onRandomizeOne={handleRandomizeOne}
             onLoadSaved={handleLoadSaved}
+            canUndo={timeline.canUndo}
+            onUndo={timeline.undo}
+            shareCopied={shareCopied}
+            onShare={handleShare}
             onRemove={timeline.removeChord}
             onChordPlay={handleTimelineChordPlay}
             notation={notation}
@@ -571,7 +634,7 @@ export default function App() {
           onRecognizedChordClick={chord => { handleChordClick(chord); setKeyboardActiveNotes(new Set()) }}
         />
 
-        <SoundControls values={sound} onChange={setSoundKey} />
+        <SoundControls values={sound} onChange={setSoundKey} loadingInstrument={loadingInstrument} />
       </div>
 
       {/* ── Chord grid ── */}
