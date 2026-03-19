@@ -1,12 +1,24 @@
 <!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta http-equiv="refresh" content="0; url=https://chords-explorer.me/">
-  <link rel="canonical" href="https://chords-explorer.me/">
-  <script>window.location.replace("https://chords-explorer.me/");</script>
-</head>
-<body>
-  <a href="https://chords-explorer.me/">Redirecting...</a>
-</body>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chords Explorer</title>
+    <!-- Google Analytics GA4 — remplace G-XXXXXXXXXX par ton Measurement ID -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-DC36VMYJRH"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-DC36VMYJRH');
+    </script>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body { background: #0d0d0d; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>
