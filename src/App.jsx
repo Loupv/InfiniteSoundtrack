@@ -734,7 +734,7 @@ export default function App() {
         >
           <div style={{ fontSize: 28 }}>🎹</div>
           <p style={{ margin: 0, fontSize: 13, color: TEXT.secondary, lineHeight: 1.6 }}>
-            If you enjoy this tool, consider a small donation to support its development — it really helps!
+            If you enjoy this tool, consider a small donation to support its development and my girlfriend's wish to buy a lampshade.
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <a
