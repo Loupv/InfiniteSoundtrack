@@ -533,7 +533,7 @@ export default function App() {
           </div>
           <a
             className="coffee-btn-header"
-            href="https://buymeacoffee.com/loupv"
+            onClick={() => track("coffee_click")} href="https://buymeacoffee.com/loupv"
             target="_blank"
             rel="noopener noreferrer"
             style={{
@@ -670,7 +670,7 @@ export default function App() {
         </span>
         <a
           className="coffee-btn-mobile"
-          href="https://buymeacoffee.com/loupv"
+          onClick={() => track("coffee_click")} href="https://buymeacoffee.com/loupv"
           target="_blank"
           rel="noopener noreferrer"
           style={{
