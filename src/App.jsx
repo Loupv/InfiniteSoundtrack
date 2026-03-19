@@ -110,8 +110,6 @@ export default function App() {
   }
 
   const soundRef  = useRef(sound)
-  useEffect(() => { soundRef.current = sound }, [sound])
-
   const beatMs    = useMemo(() => (60 / sound.tempo) * 1000, [sound.tempo])
   const beatMsRef = useRef(beatMs)
   useEffect(() => { beatMsRef.current = beatMs }, [beatMs])
@@ -124,6 +122,13 @@ export default function App() {
   const [activeDragData, setActiveDragData] = useState(null)
 
   const timeline       = useTimeline()
+
+  const arpeggioTarget = useMemo(() => {
+    if (!timeline.progression.length) return 4
+    return Math.max(...timeline.progression.map(e => (e.intervals ?? []).length))
+  }, [timeline.progression])
+
+  useEffect(() => { soundRef.current = { ...sound, arpeggioTarget } }, [sound, arpeggioTarget])
   function handleDragStart({ active }) {
     setActiveDragData(active.data.current ?? null)
   }
@@ -472,7 +477,7 @@ export default function App() {
           <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, letterSpacing: "0.08em", color: "#fff" }}>
             CHORDS EXPLORER
           </h1>
-          <span style={{ fontSize: 11, color: TEXT.faint, letterSpacing: "0.06em", fontWeight: 700 }}>v1.3</span>
+          <span style={{ fontSize: 11, color: TEXT.faint, letterSpacing: "0.06em", fontWeight: 700 }}>v1.4</span>
           <div className="kbd-hints" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {[["Click", t("clickHint",notation)],["Right-click", t("rclickHint",notation)],["Drag", t("dragHint",notation)],["Space", t("spaceHint",notation)]].map(([k,d]) => (
               <span key={k} style={{ fontSize: 11, color: TEXT.secondary, whiteSpace: "nowrap" }}>

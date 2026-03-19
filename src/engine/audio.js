@@ -52,11 +52,27 @@ const SF_NAMES = {
   marimba: "marimba",
 }
 
-// ── Spread helpers ────────────────────────────────────────────────────────────
+// ── Arpeggio helpers ──────────────────────────────────────────────────────────
 
-function getSpread(playMode, beatMs, noteCount) {
-  if (playMode === "strum")    return 0.012
-  if (playMode === "arpeggio") return (beatMs / 1000) / Math.max(noteCount, 1)
+// Expand midiNotes to targetCount using a bounce pattern (up then down
+// without repeating the top note): [C,E,G] → target 4 → [C,E,G,E]
+function expandArpeggio(midiNotes, targetCount) {
+  const n = midiNotes.length
+  if (n === 0) return midiNotes
+  if (n === 1) return Array(targetCount).fill(midiNotes[0])
+  if (n >= targetCount) return midiNotes.slice(0, targetCount)
+  const period = 2 * (n - 1)
+  const result = []
+  for (let i = 0; i < targetCount; i++) {
+    const pos = i % period
+    result.push(pos < n ? midiNotes[pos] : midiNotes[period - pos])
+  }
+  return result
+}
+
+function getSpread(playMode, beatMs, targetCount) {
+  if (playMode === "strum")    return 0.03
+  if (playMode === "arpeggio") return (beatMs / 1000) / Math.max(targetCount, 1)
   return 0 // block
 }
 
@@ -84,13 +100,17 @@ export class AudioEngine {
     return this._sfCache[waveType]
   }
 
-  async play(chord, { sustain, intensity, playMode = "block", beatMs = 667, waveType = "default" }) {
+  async play(chord, { sustain, intensity, playMode = "block", beatMs = 667, arpeggioTarget = 4, waveType = "default" }) {
     const ac = this._getCtx()
     if (ac.state === "suspended") await ac.resume()
 
-    const now       = ac.currentTime
-    const midiNotes = buildChordMidi(chord.root, chord.intervals)
-    const spread    = getSpread(playMode, beatMs, midiNotes.length)
+    const now      = ac.currentTime
+    const rawNotes = buildChordMidi(chord.root, chord.intervals)
+    const midiNotes = playMode === "arpeggio"
+      ? expandArpeggio(rawNotes, arpeggioTarget)
+      : rawNotes
+
+    const spread = getSpread(playMode, beatMs, arpeggioTarget)
 
     // For arpeggio, each note rings for roughly one beat
     const dur = playMode === "arpeggio"
@@ -104,16 +124,16 @@ export class AudioEngine {
       midiNotes.forEach((midi, i) => {
         instrument.play(midi, now + i * spread, { duration: dur, gain })
       })
-      return midiNotes
+      return rawNotes
     }
 
     // ── Default synth ──
-    const perNoteLevel = (intensity * 0.55) / Math.max(midiNotes.length, 3)
+    const perNoteLevel = (intensity * 0.07) / Math.max(midiNotes.length, 3)
     if (waveType === "default") {
       midiNotes.forEach((midi, i) => {
         playDefaultNote(ac, midiToFreq(midi), now + i * spread, dur, perNoteLevel, ac.destination)
       })
-      return midiNotes
+      return rawNotes
     }
 
     // ── Oscillator fallback ──
@@ -135,6 +155,6 @@ export class AudioEngine {
       osc.stop(now + dur)
     })
 
-    return midiNotes
+    return rawNotes
   }
 }
