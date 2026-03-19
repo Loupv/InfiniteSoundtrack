@@ -26,6 +26,10 @@ const LS_NOTATION = "chord-explorer-notation"
 function loadSaved() { try { return JSON.parse(localStorage.getItem(LS_KEY)) ?? [] } catch { return [] } }
 function saveProg(p) { try { localStorage.setItem(LS_KEY, JSON.stringify(p)) } catch {} }
 
+function track(eventName, params = {}) {
+  try { window.gtag?.("event", eventName, params) } catch {}
+}
+
 function pickWeightedName(suggMap, exclude = new Set()) {
   const candidates = [...suggMap.entries()]
     .filter(([name]) => !exclude.has(name))
@@ -105,6 +109,7 @@ export default function App() {
           timeline.addChord(chord)
         }
       }
+      track("chord_added", { chord_name: chord.name, method: "drag" })
       return
     }
 
@@ -291,6 +296,7 @@ export default function App() {
     setSelectedOctave(4)
     playChord(chord)
     timeline.addChord(chord)
+    track("chord_added", { chord_name: chord.name, method: "right_click" })
   }
   function handleTimelineChordPlay(chord) {
     const inv = chord.inversion ?? 0
@@ -302,9 +308,16 @@ export default function App() {
     setSelectedBeats(chord.beats ?? 1)
     playChordShifted(chord, oct, inv)
   }
-  function handleTogglePlayback() { if (timeline.progression.length) playback.toggle(loopMode) }
+  function handleTogglePlayback() {
+    if (!timeline.progression.length) return
+    playback.toggle(loopMode)
+    if (!isPlaying) track("progression_played", { chord_count: timeline.progression.length, loop: loopMode })
+  }
   function handleClear() { playback.stop(); timeline.clear() }
-  function handleExportMidi() { downloadMidi(timeline.progression, sound.tempo) }
+  function handleExportMidi() {
+    downloadMidi(timeline.progression, sound.tempo)
+    track("midi_exported", { chord_count: timeline.progression.length, tempo: sound.tempo })
+  }
 
   function handleRandomize4() {
     // Always reset to 4 new chords and autoplay
@@ -322,6 +335,7 @@ export default function App() {
     }
     pendingStartRef.current = true
     timeline.loadProgression(localProg)
+    track("progression_randomized", { chord_count: localProg.length })
   }
 
   function handleRandomizeOne() {
@@ -339,6 +353,7 @@ export default function App() {
     if (next) {
       timeline.addChord(next)
       playChord(next)
+      track("chord_added", { chord_name: next.name, method: "randomize_one" })
     }
   }
   function handleLoadSaved() {
