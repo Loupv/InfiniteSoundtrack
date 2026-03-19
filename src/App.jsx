@@ -90,6 +90,7 @@ export default function App() {
   const [showSettings,        setShowSettings]        = useState(false)
 
   const [shareCopied, setShareCopied] = useState(false)
+  const [showMidiPopup, setShowMidiPopup] = useState(false)
 
   const [sound, setSound] = useState({ sustain: 1.8, intensity: 0.75, playMode: "block", tempo: 90, waveType: "default" })
   const [loadingInstrument, setLoadingInstrument] = useState(false)
@@ -380,8 +381,15 @@ export default function App() {
   }
   function handleClear() { playback.stop(); timeline.clear() }
   function handleExportMidi() {
-    downloadMidi(timeline.progression, sound.tempo)
-    track("midi_exported", { chord_count: timeline.progression.length, tempo: sound.tempo })
+    const seen = localStorage.getItem("midi-popup-seen")
+    if (!seen) { setShowMidiPopup(true) } else { doDownloadMidi() }
+  }
+
+  function doDownloadMidi() {
+    localStorage.setItem("midi-popup-seen", "1")
+    downloadMidi(timeline.progression, sound.tempo, { playMode: sound.playMode, arpeggioTarget })
+    track("midi_exported", { chord_count: timeline.progression.length, tempo: sound.tempo, play_mode: sound.playMode })
+    setShowMidiPopup(false)
   }
 
   function handleRandomize4() {
@@ -544,7 +552,7 @@ export default function App() {
               padding: "5px 11px", borderRadius: 6, textDecoration: "none", flexShrink: 0,
             }}
           >
-            ☕ Buy me a coffee
+            ☕ Support the project
           </a>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 6 }}>
@@ -682,7 +690,7 @@ export default function App() {
             border: "1px solid #3a3000",
           }}
         >
-          ☕ Buy me a coffee
+          ☕ Support the project
         </a>
       </div>
     </div>
@@ -705,6 +713,67 @@ export default function App() {
         </div>
       ) : null}
     </DragOverlay>
+
+    {/* MIDI export popup */}
+    {showMidiPopup && (
+      <div
+        onClick={() => setShowMidiPopup(false)}
+        style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 1000,
+        }}
+      >
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{
+            background: "#141414", border: "1px solid #2a2a2a", borderRadius: 10,
+            padding: "28px 32px", maxWidth: 320, textAlign: "center",
+            display: "flex", flexDirection: "column", gap: 16,
+          }}
+        >
+          <div style={{ fontSize: 28 }}>🎹</div>
+          <p style={{ margin: 0, fontSize: 13, color: TEXT.secondary, lineHeight: 1.6 }}>
+            If you enjoy this tool, consider a small donation to support its development — it really helps!
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <a
+              onClick={() => track("coffee_click")}
+              href="https://buymeacoffee.com/loupv"
+              target="_blank" rel="noopener noreferrer"
+              style={{
+                display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
+                background: "#1c1800", color: "#c8a800",
+                fontWeight: 600, fontSize: 13, letterSpacing: "0.04em",
+                padding: "9px 16px", borderRadius: 6, textDecoration: "none",
+                border: "1px solid #3a3000",
+              }}
+            >
+              ☕ Support the project
+            </a>
+            <button
+              onClick={doDownloadMidi}
+              style={{
+                background: "#1a1a1a", color: TEXT.secondary, border: "1px solid #2a2a2a",
+                borderRadius: 6, padding: "9px 16px", fontSize: 13, cursor: "pointer",
+                fontFamily: "'Courier New', monospace", letterSpacing: "0.04em",
+              }}
+            >
+              ↓ download midi
+            </button>
+            <button
+              onClick={() => setShowMidiPopup(false)}
+              style={{
+                background: "none", color: TEXT.faint, border: "none",
+                fontSize: 11, cursor: "pointer", padding: "4px",
+              }}
+            >
+              close
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </DndContext>
   )
 }

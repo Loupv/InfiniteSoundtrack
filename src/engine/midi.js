@@ -35,9 +35,11 @@ function entryMidiNotes(entry) {
   return buildChordMidi(entry.root, invIntervals).map(m => m + octShift)
 }
 
-export function exportMidi(progression, tempo) {
+export function exportMidi(progression, tempo, { playMode = "block", arpeggioTarget = 4 } = {}) {
   const TICKS = 480  // ticks per quarter note (noire)
   const microsecondsPerBeat = Math.round(60_000_000 / tempo)
+  // strum offset in ticks: 0.03s converted to ticks at current tempo
+  const STRUM_TICKS = Math.round(0.03 * TICKS * tempo / 60)
 
   // Collect all events with absolute tick positions
   const events = []
@@ -58,9 +60,39 @@ export function exportMidi(progression, tempo) {
     const beats = entry.beats ?? 1
     const durTicks = Math.round(beats * TICKS)
     const notes = entryMidiNotes(entry)
+    const count = notes.length
 
-    for (const note of notes) events.push({ tick,            data: [0x90, note, 80] })
-    for (const note of notes) events.push({ tick: tick + durTicks, data: [0x80, note, 0] })
+    // Build padded note sequence for arpeggio (same logic as audio engine)
+    const target = playMode === "arpeggio" ? Math.max(arpeggioTarget, count) : count
+    const sequence = []
+    if (playMode === "arpeggio" && target > count) {
+      // fill with bounce-down pattern: [0,1,2,1] for 3-note chord target=4
+      sequence.push(...notes)
+      let i = count - 2
+      while (sequence.length < target && i >= 0) {
+        sequence.push(notes[i])
+        i--
+        if (i < 0) i = count - 2
+      }
+    } else {
+      sequence.push(...notes)
+    }
+
+    for (let i = 0; i < sequence.length; i++) {
+      let noteTick = tick
+      let noteOffTick = tick + durTicks
+
+      if (playMode === "strum") {
+        noteTick += i * STRUM_TICKS
+      } else if (playMode === "arpeggio") {
+        const spreadTicks = Math.round(durTicks / target)
+        noteTick += i * spreadTicks
+        noteOffTick = noteTick + spreadTicks
+      }
+
+      events.push({ tick: noteTick,    data: [0x90, sequence[i], 80] })
+      events.push({ tick: noteOffTick, data: [0x80, sequence[i], 0] })
+    }
 
     tick += durTicks
   }
@@ -97,8 +129,8 @@ export function exportMidi(progression, tempo) {
   return new Uint8Array([...header, ...track])
 }
 
-export function downloadMidi(progression, tempo, filename = "progression.mid") {
-  const bytes = exportMidi(progression, tempo)
+export function downloadMidi(progression, tempo, options = {}, filename = "progression.mid") {
+  const bytes = exportMidi(progression, tempo, options)
   const blob = new Blob([bytes], { type: "audio/midi" })
   const url = URL.createObjectURL(blob)
   const a = document.createElement("a")
