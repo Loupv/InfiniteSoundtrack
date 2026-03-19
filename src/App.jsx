@@ -91,7 +91,7 @@ export default function App() {
 
   const [shareCopied, setShareCopied] = useState(false)
 
-  const [sound, setSound] = useState({ sustain: 1.8, intensity: 0.75, spread: 0.015, tempo: 90, waveType: "default" })
+  const [sound, setSound] = useState({ sustain: 1.8, intensity: 0.75, playMode: "block", tempo: 90, waveType: "default" })
   const [loadingInstrument, setLoadingInstrument] = useState(false)
 
   function setSoundKey(key, val) {

@@ -12,8 +12,9 @@ export function useAudio({ soundRef, onNotesPlayed, onNotesClear }) {
   }
 
   const playChord = useCallback(async (chord) => {
-    const { sustain, intensity, spread, waveType = "default" } = soundRef.current
-    const midiNotes = await getEngine().play(chord, { sustain, intensity, spread, waveType })
+    const { sustain, intensity, playMode = "block", tempo = 90, waveType = "default" } = soundRef.current
+    const beatMs    = (60 / tempo) * 1000
+    const midiNotes = await getEngine().play(chord, { sustain, intensity, playMode, beatMs, waveType })
     const noteObjs  = midiNotes.map(midi => ({
       pc:  midiToPitchClass(midi),
       oct: Math.floor(midi / 12) - 1,

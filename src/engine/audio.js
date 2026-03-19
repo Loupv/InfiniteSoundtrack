@@ -52,10 +52,18 @@ const SF_NAMES = {
   marimba: "marimba",
 }
 
+// ── Spread helpers ────────────────────────────────────────────────────────────
+
+function getSpread(playMode, beatMs, noteCount) {
+  if (playMode === "strum")    return 0.012
+  if (playMode === "arpeggio") return (beatMs / 1000) / Math.max(noteCount, 1)
+  return 0 // block
+}
+
 export class AudioEngine {
   constructor() {
-    this._ctx    = null
-    this._sfCache = {} // waveType → Promise<instrument>
+    this._ctx     = null
+    this._sfCache = {}
   }
 
   _getCtx() {
@@ -63,7 +71,6 @@ export class AudioEngine {
     return this._ctx
   }
 
-  // Preload a soundfont instrument (call when user selects it)
   async preload(waveType) {
     if (!SF_NAMES[waveType]) return
     const ac = this._getCtx()
@@ -77,13 +84,18 @@ export class AudioEngine {
     return this._sfCache[waveType]
   }
 
-  async play(chord, { sustain, intensity, spread, waveType = "default" }) {
+  async play(chord, { sustain, intensity, playMode = "block", beatMs = 667, waveType = "default" }) {
     const ac = this._getCtx()
     if (ac.state === "suspended") await ac.resume()
 
     const now       = ac.currentTime
-    const dur       = Math.max(0.25, sustain)
     const midiNotes = buildChordMidi(chord.root, chord.intervals)
+    const spread    = getSpread(playMode, beatMs, midiNotes.length)
+
+    // For arpeggio, each note rings for roughly one beat
+    const dur = playMode === "arpeggio"
+      ? Math.max(beatMs / 1000, sustain)
+      : Math.max(0.25, sustain)
 
     // ── Soundfont ──
     if (SF_NAMES[waveType]) {
@@ -104,7 +116,7 @@ export class AudioEngine {
       return midiNotes
     }
 
-    // ── Oscillator (warm) ──
+    // ── Oscillator fallback ──
     const master = ac.createGain()
     master.gain.setValueAtTime(0.0001, now)
     master.gain.exponentialRampToValueAtTime(0.15 + intensity * 0.35, now + 0.03)
@@ -114,7 +126,7 @@ export class AudioEngine {
     midiNotes.forEach((midi, i) => {
       const osc  = ac.createOscillator()
       const gain = ac.createGain()
-      osc.type            = waveType  // "triangle"
+      osc.type            = waveType
       osc.frequency.value = midiToFreq(midi)
       gain.gain.value     = (0.65 * intensity) / Math.max(midiNotes.length, 3)
       osc.connect(gain)
