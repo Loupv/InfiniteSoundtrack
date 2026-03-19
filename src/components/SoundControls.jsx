@@ -1,10 +1,12 @@
 import { TEXT } from "../constants"
 
 const CONTROLS = [
-  { key: "tempo",     label: "Tempo",   min: 40,  max: 240, step: 1,    fmt: v => `${v} bpm` },
-  { key: "sustain",   label: "Sustain", min: 0.3, max: 4,   step: 0.05, fmt: v => `${v.toFixed(1)}s` },
-  { key: "intensity", label: "Vol",     min: 0.1, max: 1.4, step: 0.05, fmt: v => `${Math.round(v * 100 / 1.4)}%` },
+  { key: "tempo",     label: "Tempo",   min: 40,  max: 240, step: 1,    fmt: v => `${v} bpm`,           sfOnly: false },
+  { key: "sustain",   label: "Sustain", min: 0.3, max: 4,   step: 0.05, fmt: v => `${v.toFixed(1)}s`,   sfOnly: false, defaultOnly: true },
+  { key: "intensity", label: "Vol",     min: 0.1, max: 1.4, step: 0.05, fmt: v => `${Math.round(v * 100 / 1.4)}%`, sfOnly: false },
 ]
+
+const SF_INSTRUMENTS = new Set(["piano", "harp", "marimba"])
 
 const WAVE_TYPES = [
   { value: "default", label: "default", sf: false },
@@ -90,7 +92,7 @@ export function SoundControls({ values, onChange, loadingInstrument }) {
         </div>
 
         {/* Sliders */}
-        {CONTROLS.map(({ key, label, min, max, step, fmt }) => (
+        {CONTROLS.filter(c => !(c.defaultOnly && SF_INSTRUMENTS.has(waveType))).map(({ key, label, min, max, step, fmt }) => (
           <label key={key} style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 11, color: TEXT.muted, width: 44, flexShrink: 0 }}>{label}</span>
             <input
