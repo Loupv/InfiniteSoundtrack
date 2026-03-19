@@ -83,8 +83,17 @@ export class AudioEngine {
   }
 
   _getCtx() {
-    if (!this._ctx) this._ctx = new window.AudioContext()
+    if (!this._ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext
+      this._ctx = new AC()
+    }
     return this._ctx
+  }
+
+  /** Call this synchronously inside a user-gesture handler to unlock Safari */
+  unlock() {
+    const ac = this._getCtx()
+    if (ac.state === "suspended") ac.resume()
   }
 
   async preload(waveType) {

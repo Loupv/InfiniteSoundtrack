@@ -30,5 +30,10 @@ export function useAudio({ soundRef, onNotesPlayed, onNotesClear }) {
     getEngine().preload(waveType)
   }, [])
 
-  return { playChord, preload }
+  /** Must be called synchronously in a user-gesture handler to unlock Safari */
+  const unlock = useCallback(() => {
+    getEngine().unlock()
+  }, [])
+
+  return { playChord, preload, unlock }
 }

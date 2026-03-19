@@ -210,7 +210,7 @@ export default function App() {
     return audioCtxRef.current
   }
 
-  const { playChord, preload } = useAudio({
+  const { playChord, preload, unlock } = useAudio({
     soundRef,
     onNotesPlayed: useCallback(notes => setCurrentPlayedNotes(notes), []),
     onNotesClear:  useCallback(()    => setCurrentPlayedNotes([]),    []),
@@ -374,6 +374,7 @@ export default function App() {
   }
   function handleTogglePlayback() {
     if (!timeline.progression.length) return
+    unlock() // must be synchronous for Safari AudioContext unlock
     playback.toggle(loopMode)
     if (!isPlaying) track("progression_played", { chord_count: timeline.progression.length, loop: loopMode })
   }
