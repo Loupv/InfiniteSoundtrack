@@ -2,6 +2,7 @@ import { useSoundtrack } from "./hooks/useSoundtrack"
 import { NowPlaying }     from "./components/NowPlaying"
 import { EmotionalSliders } from "./components/EmotionalSliders"
 import { InstrumentPanel }  from "./components/InstrumentPanel"
+import { LAYER_PRESETS }    from "./engine/soundtrack"
 import { EventButtons }     from "./components/EventButtons"
 
 function track(name, params = {}) {
@@ -13,7 +14,7 @@ export default function App() {
     state, currentChord, history, queue, detectedKey, tempo,
     mood, layers, rhythmPattern, rhythmVolume,
     play, stop, fadeIn, fadeOut, reroll, unlock,
-    setMood, setLayer, setRhythm, setRhythmVol,
+    setMood, setLayer, applyPreset, setRhythm, setRhythmVol,
   } = useSoundtrack()
 
   function handlePlay() {
@@ -133,6 +134,7 @@ export default function App() {
           <InstrumentPanel
             layers={layers}
             onLayerChange={setLayer}
+            onApplyPreset={name => applyPreset(LAYER_PRESETS[name])}
             rhythmPattern={rhythmPattern}
             rhythmVolume={rhythmVolume}
             onRhythmChange={setRhythm}

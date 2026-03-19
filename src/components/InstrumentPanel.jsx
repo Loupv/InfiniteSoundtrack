@@ -1,4 +1,5 @@
 import { RHYTHM_PATTERNS } from "../engine/rhythm"
+import { LAYER_PRESETS } from "../engine/soundtrack"
 
 const WAVE_OPTIONS = [
   { value: "default", label: "Synth"   },
@@ -7,20 +8,30 @@ const WAVE_OPTIONS = [
   { value: "marimba", label: "Marimba" },
 ]
 
-const MODE_OPTIONS = [
-  { value: "block",   label: "Bloc"  },
-  { value: "strum",   label: "Strum" },
-  { value: "arpeggio",label: "Arp"   },
+export const PLAY_MODES = [
+  { value: "block",    label: "Bloc",     desc: "Tous les accords simultanément" },
+  { value: "strum",    label: "Strum",    desc: "Cascade rapide ascendante" },
+  { value: "arpUp",    label: "Arp ↑",    desc: "Arpège montant (1 note/beat)" },
+  { value: "arpDown",  label: "Arp ↓",    desc: "Arpège descendant" },
+  { value: "arpUpDown",label: "Arp ↕",    desc: "Arpège bounce montée-descente" },
+  { value: "alberti",  label: "Alberti",  desc: "Main gauche classique: basse–5te–3ce–5te" },
+  { value: "waltz",    label: "Valse",    desc: "Basse sur 1, accord sur 2–3" },
+  { value: "comp",     label: "Comp",     desc: "Contretemps jazz (Bill Evans)" },
+  { value: "broken",   label: "Brisé",    desc: "Accords brisés type baroque" },
 ]
-
-const OCTAVE_OPTIONS = [2, 3, 4, 5, 6]
 
 const RHYTHM_OPTIONS = Object.keys(RHYTHM_PATTERNS).map(k => ({
   value: k,
   label: { none: "Aucun", pulse: "Pulse", simple: "Simple", groove: "Groove", half: "Half-time" }[k] ?? k,
 }))
 
-export function InstrumentPanel({ layers, onLayerChange, rhythmPattern, rhythmVolume, onRhythmChange, onRhythmVolumeChange }) {
+const OCTAVE_OPTIONS = [2, 3, 4, 5, 6]
+
+export function InstrumentPanel({
+  layers, onLayerChange,
+  rhythmPattern, rhythmVolume, onRhythmChange, onRhythmVolumeChange,
+  onApplyPreset,
+}) {
   return (
     <div style={{
       background: "#111",
@@ -31,10 +42,38 @@ export function InstrumentPanel({ layers, onLayerChange, rhythmPattern, rhythmVo
       flexDirection: "column",
       gap: 14,
     }}>
-      <div style={{ fontSize: 10, color: "#555", letterSpacing: "0.1em", marginBottom: 2 }}>
-        INSTRUMENTS
+
+      {/* Header + presets */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 10, color: "#555", letterSpacing: "0.1em" }}>INSTRUMENTS</span>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 5, flexWrap: "wrap" }}>
+          {Object.keys(LAYER_PRESETS).map(name => (
+            <button
+              key={name}
+              onClick={() => onApplyPreset(name)}
+              title={name}
+              style={{
+                padding: "2px 7px",
+                borderRadius: 4,
+                border: "1px solid #222",
+                background: "transparent",
+                color: "#555",
+                fontSize: 9,
+                cursor: "pointer",
+                fontFamily: "'Courier New', monospace",
+                letterSpacing: "0.04em",
+                transition: "color 0.15s, border-color 0.15s",
+              }}
+              onMouseEnter={e => { e.target.style.color = "#888"; e.target.style.borderColor = "#444" }}
+              onMouseLeave={e => { e.target.style.color = "#555"; e.target.style.borderColor = "#222" }}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
       </div>
 
+      {/* Layer rows */}
       {layers.map(layer => (
         <LayerRow
           key={layer.id}
@@ -51,7 +90,7 @@ export function InstrumentPanel({ layers, onLayerChange, rhythmPattern, rhythmVo
         flexDirection: "column",
         gap: 8,
       }}>
-        <div style={{ fontSize: 10, color: "#555", letterSpacing: "0.1em" }}>RYTHME</div>
+        <span style={{ fontSize: 10, color: "#555", letterSpacing: "0.1em" }}>RYTHME</span>
         <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
           {RHYTHM_OPTIONS.map(({ value, label }) => (
             <button
@@ -63,7 +102,7 @@ export function InstrumentPanel({ layers, onLayerChange, rhythmPattern, rhythmVo
                 border: `1px solid ${rhythmPattern === value ? "#4a8abf" : "#222"}`,
                 background: rhythmPattern === value ? "#0e1a24" : "transparent",
                 color: rhythmPattern === value ? "#4a8abf" : "#555",
-                fontSize: 11,
+                fontSize: 10,
                 cursor: "pointer",
                 fontFamily: "'Courier New', monospace",
                 letterSpacing: "0.04em",
@@ -76,7 +115,7 @@ export function InstrumentPanel({ layers, onLayerChange, rhythmPattern, rhythmVo
         </div>
         {rhythmPattern !== "none" && (
           <VolumeSlider
-            label="Volume rythme"
+            label="vol"
             value={rhythmVolume}
             onChange={onRhythmVolumeChange}
             color="#4a8abf"
@@ -87,38 +126,25 @@ export function InstrumentPanel({ layers, onLayerChange, rhythmPattern, rhythmVo
   )
 }
 
+// ── LayerRow ─────────────────────────────────────────────────────────────────
+
 function LayerRow({ layer, onChange }) {
   return (
     <div style={{
       display: "flex",
       flexDirection: "column",
-      gap: 6,
-      opacity: layer.enabled ? 1 : 0.4,
+      gap: 5,
+      opacity: layer.enabled ? 1 : 0.38,
       transition: "opacity 0.2s",
     }}>
-      {/* Row 1: toggle + name + selectors */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        {/* Enable toggle */}
-        <button
-          onClick={() => onChange({ enabled: !layer.enabled })}
-          title={layer.enabled ? "Désactiver" : "Activer"}
-          style={{
-            width: 14,
-            height: 14,
-            borderRadius: "50%",
-            border: `2px solid ${layer.enabled ? "#4abf8a" : "#333"}`,
-            background: layer.enabled ? "#4abf8a" : "transparent",
-            cursor: "pointer",
-            padding: 0,
-            flexShrink: 0,
-          }}
-        />
+      {/* Row: toggle + name + selectors */}
+      <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+        <ToggleDot enabled={layer.enabled} onClick={() => onChange({ enabled: !layer.enabled })} />
 
-        <span style={{ fontSize: 11, color: "#aaa", minWidth: 58, letterSpacing: "0.04em" }}>
+        <span style={{ fontSize: 10, color: "#aaa", minWidth: 60, letterSpacing: "0.04em" }}>
           {layer.name}
         </span>
 
-        {/* Instrument selector */}
         <Select
           options={WAVE_OPTIONS}
           value={layer.waveType}
@@ -126,17 +152,14 @@ function LayerRow({ layer, onChange }) {
           disabled={!layer.enabled}
         />
 
-        {/* Play mode */}
-        <Select
-          options={MODE_OPTIONS}
+        <ModeSelect
           value={layer.playMode}
           onChange={v => onChange({ playMode: v })}
           disabled={!layer.enabled}
         />
 
-        {/* Octave */}
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <span style={{ fontSize: 9, color: "#444" }}>OCT</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+          <span style={{ fontSize: 9, color: "#444" }}>oct</span>
           <Select
             options={OCTAVE_OPTIONS.map(o => ({ value: o, label: String(o) }))}
             value={layer.octave}
@@ -146,16 +169,33 @@ function LayerRow({ layer, onChange }) {
         </div>
       </div>
 
-      {/* Row 2: volume slider */}
+      {/* Volume slider */}
       {layer.enabled && (
         <VolumeSlider
           label="vol"
           value={layer.volume}
           onChange={v => onChange({ volume: v })}
-          color="#888"
+          color="#666"
         />
       )}
     </div>
+  )
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function ToggleDot({ enabled, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      title={enabled ? "Désactiver" : "Activer"}
+      style={{
+        width: 12, height: 12, borderRadius: "50%", flexShrink: 0,
+        border: `2px solid ${enabled ? "#4abf8a" : "#333"}`,
+        background: enabled ? "#4abf8a" : "transparent",
+        cursor: "pointer", padding: 0,
+      }}
+    />
   )
 }
 
@@ -166,15 +206,10 @@ function Select({ options, value, onChange, disabled }) {
       onChange={e => onChange(e.target.value)}
       disabled={disabled}
       style={{
-        background: "#1a1a1a",
-        border: "1px solid #222",
-        borderRadius: 4,
+        background: "#1a1a1a", border: "1px solid #222", borderRadius: 4,
         color: disabled ? "#333" : "#aaa",
-        fontSize: 10,
-        padding: "2px 4px",
-        cursor: disabled ? "default" : "pointer",
-        fontFamily: "'Courier New', monospace",
-        letterSpacing: "0.03em",
+        fontSize: 10, padding: "2px 4px", cursor: disabled ? "default" : "pointer",
+        fontFamily: "'Courier New', monospace", letterSpacing: "0.03em",
       }}
     >
       {options.map(({ value: v, label }) => (
@@ -184,20 +219,40 @@ function Select({ options, value, onChange, disabled }) {
   )
 }
 
+function ModeSelect({ value, onChange, disabled }) {
+  const current = PLAY_MODES.find(m => m.value === value)
+  return (
+    <select
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      disabled={disabled}
+      title={current?.desc ?? ""}
+      style={{
+        background: "#1a1a1a", border: "1px solid #222", borderRadius: 4,
+        color: disabled ? "#333" : "#8abf8a",
+        fontSize: 10, padding: "2px 4px", cursor: disabled ? "default" : "pointer",
+        fontFamily: "'Courier New', monospace", letterSpacing: "0.03em",
+        minWidth: 68,
+      }}
+    >
+      {PLAY_MODES.map(({ value: v, label }) => (
+        <option key={v} value={v}>{label}</option>
+      ))}
+    </select>
+  )
+}
+
 function VolumeSlider({ label, value, onChange, color = "#888" }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, paddingLeft: 22 }}>
-      <span style={{ fontSize: 9, color: "#444", minWidth: 20 }}>{label}</span>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, paddingLeft: 19 }}>
+      <span style={{ fontSize: 9, color: "#3a3a3a", minWidth: 18 }}>{label}</span>
       <input
-        type="range"
-        min={0}
-        max={100}
-        step={1}
+        type="range" min={0} max={100} step={1}
         value={Math.round(value * 100)}
         onChange={e => onChange(Number(e.target.value) / 100)}
         style={{ flex: 1, accentColor: color, cursor: "pointer", height: 3 }}
       />
-      <span style={{ fontSize: 9, color: "#444", minWidth: 28, textAlign: "right" }}>
+      <span style={{ fontSize: 9, color: "#3a3a3a", minWidth: 28, textAlign: "right" }}>
         {Math.round(value * 100)}%
       </span>
     </div>

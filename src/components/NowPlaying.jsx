@@ -134,9 +134,11 @@ export function NowPlaying({ currentChord, history, queue, detectedKey, tempo, s
       {/* Chord ticker */}
       <div style={{
         overflow: "hidden",
-        width: Math.min(viewportW, "100%"),
-        maxWidth: "100%",
+        width: "100%",
         alignSelf: "center",
+        // Fade edges to transparent — creates the progressive reveal effect
+        WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 14%, black 86%, transparent 100%)",
+        maskImage:        "linear-gradient(to right, transparent 0%, black 14%, black 86%, transparent 100%)",
       }}>
         <div
           style={{
@@ -145,6 +147,8 @@ export function NowPlaying({ currentChord, history, queue, detectedKey, tempo, s
             transform: `translateX(${slideX}px)`,
             transition,
             willChange: "transform",
+            // Center the 9-slot rail; overflow handled by parent mask
+            justifyContent: "center",
           }}
         >
           {displayed.map(item => (

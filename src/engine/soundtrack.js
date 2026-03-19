@@ -62,14 +62,53 @@ function chordForLayer(chord, layer) {
   return { ...chord, intervals }
 }
 
-// ── Default layer definitions ─────────────────────────────────────────────────
+// ── Layer definitions & presets ───────────────────────────────────────────────
 
 export const DEFAULT_LAYERS = [
-  { id: "harmony", name: "Harmonie", waveType: "piano",   playMode: "block",    octave: 4, volume: 0.7,  enabled: true,  role: "full" },
-  { id: "melody",  name: "Mélodie",  waveType: "harp",    playMode: "arpeggio", octave: 5, volume: 0.45, enabled: true,  role: "full" },
-  { id: "bass",    name: "Basse",    waveType: "default", playMode: "block",    octave: 2, volume: 0.55, enabled: true,  role: "bass" },
-  { id: "pad",     name: "Pad",      waveType: "default", playMode: "block",    octave: 3, volume: 0.3,  enabled: false, role: "full" },
+  { id: "harmony", name: "Harmonie", waveType: "piano",   playMode: "block",   octave: 4, volume: 0.65, enabled: true,  role: "full" },
+  { id: "melody",  name: "Mélodie",  waveType: "harp",    playMode: "arpUp",   octave: 5, volume: 0.45, enabled: true,  role: "full" },
+  { id: "bass",    name: "Basse",    waveType: "default", playMode: "block",   octave: 2, volume: 0.55, enabled: true,  role: "bass" },
+  { id: "pad",     name: "Pad",      waveType: "default", playMode: "block",   octave: 3, volume: 0.3,  enabled: false, role: "full" },
 ]
+
+export const LAYER_PRESETS = {
+  "Défaut": DEFAULT_LAYERS,
+
+  "Piano classique": [
+    { id: "harmony", name: "Main droite",  waveType: "piano",   playMode: "arpUp",    octave: 5, volume: 0.6,  enabled: true,  role: "full" },
+    { id: "melody",  name: "Main gauche",  waveType: "piano",   playMode: "alberti",  octave: 3, volume: 0.55, enabled: true,  role: "full" },
+    { id: "bass",    name: "Sub",          waveType: "default", playMode: "block",    octave: 2, volume: 0.35, enabled: true,  role: "bass" },
+    { id: "pad",     name: "Shimmer",      waveType: "harp",    playMode: "arpUpDown",octave: 6, volume: 0.2,  enabled: false, role: "full" },
+  ],
+
+  "Jazz": [
+    { id: "harmony", name: "Comping",      waveType: "piano",   playMode: "comp",     octave: 4, volume: 0.7,  enabled: true,  role: "full" },
+    { id: "melody",  name: "Mélodie",      waveType: "harp",    playMode: "arpUp",    octave: 5, volume: 0.4,  enabled: true,  role: "full" },
+    { id: "bass",    name: "Basse jazz",   waveType: "default", playMode: "waltz",    octave: 2, volume: 0.6,  enabled: true,  role: "full" },
+    { id: "pad",     name: "Pad",          waveType: "default", playMode: "block",    octave: 3, volume: 0.15, enabled: false, role: "full" },
+  ],
+
+  "Valse": [
+    { id: "harmony", name: "Mélodie",      waveType: "piano",   playMode: "arpUp",    octave: 5, volume: 0.6,  enabled: true,  role: "full" },
+    { id: "melody",  name: "Accomp.",      waveType: "piano",   playMode: "waltz",    octave: 3, volume: 0.5,  enabled: true,  role: "full" },
+    { id: "bass",    name: "Sub",          waveType: "default", playMode: "block",    octave: 2, volume: 0.3,  enabled: true,  role: "bass" },
+    { id: "pad",     name: "Harpe",        waveType: "harp",    playMode: "arpDown",  octave: 5, volume: 0.25, enabled: false, role: "full" },
+  ],
+
+  "Ambient": [
+    { id: "harmony", name: "Pad lent",     waveType: "piano",   playMode: "arpUpDown",octave: 4, volume: 0.5,  enabled: true,  role: "full" },
+    { id: "melody",  name: "Harpe",        waveType: "harp",    playMode: "arpDown",  octave: 5, volume: 0.35, enabled: true,  role: "full" },
+    { id: "bass",    name: "Sub",          waveType: "default", playMode: "block",    octave: 2, volume: 0.4,  enabled: true,  role: "bass" },
+    { id: "pad",     name: "Shimmer",      waveType: "harp",    playMode: "arpUp",    octave: 6, volume: 0.2,  enabled: true,  role: "full" },
+  ],
+
+  "Baroque": [
+    { id: "harmony", name: "Continuo",     waveType: "harp",    playMode: "broken",   octave: 4, volume: 0.6,  enabled: true,  role: "full" },
+    { id: "melody",  name: "Mélodie",      waveType: "harp",    playMode: "arpUp",    octave: 5, volume: 0.5,  enabled: true,  role: "full" },
+    { id: "bass",    name: "Basse",        waveType: "default", playMode: "block",    octave: 2, volume: 0.5,  enabled: true,  role: "bass" },
+    { id: "pad",     name: "Pad",          waveType: "default", playMode: "block",    octave: 3, volume: 0.15, enabled: false, role: "full" },
+  ],
+}
 
 // ── SoundtrackEngine ──────────────────────────────────────────────────────────
 
@@ -225,10 +264,8 @@ export class SoundtrackEngine {
 
     const ac       = this._ac
     const now      = ac.currentTime
-    const beatSec  = this.beatSec
-    const chordDur = beatSec * 4   // 1 bar = 4 beats
-    const beatMs   = beatSec * 1000
-    const sustain  = Math.min(this._moodToSustain(), chordDur * 0.92)
+    const beatSec   = this.beatSec
+    const chordDur  = beatSec * 4   // 1 bar = 4 beats
     const intensity = this._moodToIntensity()
 
     this._fillQueue()
@@ -248,13 +285,12 @@ export class SoundtrackEngine {
         const { engine } = this._layerNodes[layer.id] ?? {}
         if (!engine) return
         engine.play(chordForLayer(chord, layer), {
-          startTime:      this._nextTime,
-          sustain,
+          startTime:   this._nextTime,
+          chordDurSec: chordDur,
+          beatSec,
           intensity,
-          playMode:       layer.playMode,
-          beatMs,
-          arpeggioTarget: Math.max(4, chord.intervals?.length ?? 3),
-          waveType:       layer.waveType,
+          playMode:    layer.playMode,
+          waveType:    layer.waveType,
         })
       })
 

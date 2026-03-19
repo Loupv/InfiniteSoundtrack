@@ -11,24 +11,24 @@ const PIANO_HARMONICS = [
   { ratio: 6.0100, gain: 0.03 },
 ]
 
-function playDefaultNote(ac, freq, now, dur, perNoteLevel, dest) {
+function playDefaultNote(ac, freq, startTime, dur, perNoteLevel, dest) {
   const filter = ac.createBiquadFilter()
   filter.type = "lowpass"
   filter.Q.value = 0.7
   const maxFreq = Math.min(freq * 14, 18000)
   const midFreq = Math.max(freq * 5, 800)
   const endFreq = Math.max(freq * 2.5, 400)
-  filter.frequency.setValueAtTime(maxFreq, now)
-  filter.frequency.exponentialRampToValueAtTime(midFreq, now + 0.08)
-  filter.frequency.exponentialRampToValueAtTime(endFreq, now + Math.min(dur * 0.5, 1.5))
+  filter.frequency.setValueAtTime(maxFreq, startTime)
+  filter.frequency.exponentialRampToValueAtTime(midFreq, startTime + 0.08)
+  filter.frequency.exponentialRampToValueAtTime(endFreq, startTime + Math.min(dur * 0.5, 1.5))
   filter.connect(dest)
 
   const env = ac.createGain()
-  env.gain.setValueAtTime(0.0001, now)
-  env.gain.exponentialRampToValueAtTime(perNoteLevel, now + 0.005)
-  env.gain.exponentialRampToValueAtTime(perNoteLevel * 0.65, now + 0.07)
-  env.gain.exponentialRampToValueAtTime(perNoteLevel * 0.35, now + 0.3)
-  env.gain.exponentialRampToValueAtTime(0.0001, now + dur)
+  env.gain.setValueAtTime(0.0001, startTime)
+  env.gain.exponentialRampToValueAtTime(perNoteLevel, startTime + 0.005)
+  env.gain.exponentialRampToValueAtTime(perNoteLevel * 0.65, startTime + 0.07)
+  env.gain.exponentialRampToValueAtTime(perNoteLevel * 0.35, startTime + 0.3)
+  env.gain.exponentialRampToValueAtTime(0.0001, startTime + dur)
   env.connect(filter)
 
   PIANO_HARMONICS.forEach(({ ratio, gain: hGain }) => {
@@ -39,8 +39,27 @@ function playDefaultNote(ac, freq, now, dur, perNoteLevel, dest) {
     gNode.gain.value    = hGain
     osc.connect(gNode)
     gNode.connect(env)
-    osc.start(now)
-    osc.stop(now + dur)
+    osc.start(startTime)
+    osc.stop(startTime + dur)
+  })
+}
+
+function playOscNotes(ac, midiNotes, startTime, dur, intensity, waveType, dest) {
+  const master = ac.createGain()
+  master.gain.setValueAtTime(0.0001, startTime)
+  master.gain.exponentialRampToValueAtTime(0.15 + intensity * 0.35, startTime + 0.03)
+  master.gain.exponentialRampToValueAtTime(0.0001, startTime + dur)
+  master.connect(dest)
+  midiNotes.forEach(midi => {
+    const osc  = ac.createOscillator()
+    const gain = ac.createGain()
+    osc.type            = waveType
+    osc.frequency.value = midiToFreq(midi)
+    gain.gain.value     = (0.65 * intensity) / Math.max(midiNotes.length, 2)
+    osc.connect(gain)
+    gain.connect(master)
+    osc.start(startTime)
+    osc.stop(startTime + dur)
   })
 }
 
@@ -52,36 +71,130 @@ const SF_NAMES = {
   marimba: "marimba",
 }
 
-// ── Arpeggio helpers ──────────────────────────────────────────────────────────
+// ── Schedule builder ──────────────────────────────────────────────────────────
+// Returns an array of { notes: number[], t: number, dur: number }
+// where t is seconds after chord start and dur is note duration in seconds.
 
-function expandArpeggio(midiNotes, targetCount) {
-  const n = midiNotes.length
-  if (n === 0) return midiNotes
-  if (n === 1) return Array(targetCount).fill(midiNotes[0])
-  if (n >= targetCount) return midiNotes.slice(0, targetCount)
-  const period = 2 * (n - 1)
-  const result = []
-  for (let i = 0; i < targetCount; i++) {
-    const pos = i % period
-    result.push(pos < n ? midiNotes[pos] : midiNotes[period - pos])
+export function buildSchedule(midiNotes, playMode, chordDurSec, beatSec) {
+  const d = chordDurSec
+  const b = beatSec
+
+  switch (playMode) {
+
+    // ── Strum: fast cascade up ─────────────────────────────────────────────
+    case "strum":
+      return midiNotes.map((n, i) => ({
+        notes: [n], t: i * 0.028, dur: Math.max(0.3, d * 0.9),
+      }))
+
+    // ── Arpège montant ─────────────────────────────────────────────────────
+    case "arpUp": {
+      const step = b
+      return midiNotes.map((n, i) => ({
+        notes: [n], t: i * step, dur: Math.max(step * 1.5, 0.35),
+      }))
+    }
+
+    // ── Arpège descendant ──────────────────────────────────────────────────
+    case "arpDown": {
+      const step = b
+      return [...midiNotes].reverse().map((n, i) => ({
+        notes: [n], t: i * step, dur: Math.max(step * 1.5, 0.35),
+      }))
+    }
+
+    // ── Arpège montée-descente (bounce) ────────────────────────────────────
+    case "arpUpDown": {
+      const n = midiNotes.length
+      const bounced = n <= 1
+        ? midiNotes
+        : [...midiNotes, ...[...midiNotes].reverse().slice(1, -1)]
+      const step = d / Math.max(bounced.length, 1)
+      return bounced.map((note, i) => ({
+        notes: [note], t: i * step, dur: Math.max(step * 1.6, 0.25),
+      }))
+    }
+
+    // ── Alberti (main gauche classique: basse–5te–3ce–5te×2) ──────────────
+    case "alberti": {
+      if (midiNotes.length < 2) return [{ notes: midiNotes, t: 0, dur: d }]
+      const bass = midiNotes[0]
+      const high = midiNotes[midiNotes.length - 1]
+      const mid  = midiNotes[Math.round((midiNotes.length - 1) / 2)]
+      // 8 equal subdivisions per bar: bass-high-mid-high × 2
+      const pat  = [bass, high, mid, high, bass, high, mid, high]
+      const step = d / pat.length
+      return pat.map((note, i) => ({
+        notes: [note], t: i * step, dur: Math.max(step * 1.3, 0.12),
+      }))
+    }
+
+    // ── Valse (basse + accord ×2) ──────────────────────────────────────────
+    case "waltz": {
+      const bass  = [midiNotes[0]]
+      const chord = midiNotes.slice(1).length ? midiNotes.slice(1) : midiNotes
+      const beat  = d / 3
+      return [
+        { notes: bass,  t: 0,        dur: beat * 0.85 },
+        { notes: chord, t: beat,     dur: beat * 1.6  },
+        { notes: chord, t: beat * 2, dur: beat * 1.6  },
+      ]
+    }
+
+    // ── Comp jazz (contretemps façon Bill Evans) ───────────────────────────
+    case "comp": {
+      const bass  = [midiNotes[0]]
+      const chord = midiNotes.slice(1).length ? midiNotes.slice(1) : midiNotes
+      const bt    = d / 4
+      return [
+        { notes: bass,  t: 0,         dur: bt * 0.7  },
+        { notes: chord, t: bt * 1,    dur: bt * 0.55 },
+        { notes: chord, t: bt * 1.5,  dur: bt * 0.55 },
+        { notes: bass,  t: bt * 2,    dur: bt * 0.7  },
+        { notes: chord, t: bt * 2.5,  dur: bt * 0.55 },
+        { notes: chord, t: bt * 3,    dur: bt * 0.55 },
+        { notes: chord, t: bt * 3.5,  dur: bt * 0.55 },
+      ]
+    }
+
+    // ── Broken: brisé type guitare baroque (1-2, 2-3, 1-2-3 ...) ─────────
+    case "broken": {
+      const n     = midiNotes.length
+      if (n < 2) return [{ notes: midiNotes, t: 0, dur: d }]
+      const pairs = []
+      for (let i = 0; i < n - 1; i++) {
+        pairs.push([midiNotes[i], midiNotes[i + 1]])
+      }
+      // fill the bar with repeating pairs
+      const step = d / (Math.ceil(d / b) * 2)
+      const out  = []
+      let t = 0
+      let pi = 0
+      while (t < d - step * 0.5) {
+        const p = pairs[pi % pairs.length]
+        out.push({ notes: p, t, dur: Math.max(step * 2, 0.25) })
+        t  += step * 2
+        pi++
+      }
+      return out
+    }
+
+    // ── Bloc (défaut) ──────────────────────────────────────────────────────
+    case "block":
+    default:
+      return [{ notes: midiNotes, t: 0, dur: Math.max(0.25, d * 0.92) }]
   }
-  return result
 }
 
-function getSpread(playMode, beatMs, targetCount) {
-  if (playMode === "strum")    return 0.03
-  if (playMode === "arpeggio") return (beatMs / 1000) / Math.max(targetCount, 1)
-  return 0 // block
-}
+// ── AudioEngine ───────────────────────────────────────────────────────────────
 
 export class AudioEngine {
   constructor() {
     this._ctx      = null
     this._sfCache  = {}
-    this._destNode = null  // external dest GainNode for multi-layer use
+    this._destNode = null
   }
 
-  /** Attach an external AudioContext and destination node (for multi-layer/scheduled use) */
   setContext(ac, destNode) {
     this._ctx      = ac
     this._destNode = destNode ?? null
@@ -99,14 +212,13 @@ export class AudioEngine {
     return this._destNode ?? this._getCtx().destination
   }
 
-  /** Call this synchronously inside a user-gesture handler to unlock Safari */
   unlock() {
     const ac = this._getCtx()
     if (ac.state === "suspended") ac.resume()
   }
 
   async preload(waveType) {
-    if (!SF_NAMES[waveType]) return
+    if (!SF_NAMES[waveType]) return null
     const ac = this._getCtx()
     if (!this._sfCache[waveType]) {
       const Soundfont = (await import("soundfont-player")).default
@@ -119,76 +231,52 @@ export class AudioEngine {
   }
 
   /**
-   * Play a chord.
+   * Play a chord using schedule-based patterns.
    * @param {object} chord
    * @param {object} opts
-   * @param {number}      opts.sustain
-   * @param {number}      opts.intensity
-   * @param {string}      opts.playMode      "block" | "strum" | "arpeggio"
-   * @param {number}      opts.beatMs
-   * @param {number}      opts.arpeggioTarget
-   * @param {string}      opts.waveType
-   * @param {number|null} opts.startTime     Web Audio clock time; null = ac.currentTime
+   * @param {number|null} opts.startTime    Web Audio clock time; null = now
+   * @param {number}      opts.chordDurSec  Total chord duration in seconds
+   * @param {number}      opts.beatSec      Beat duration (for pattern timing)
+   * @param {number}      opts.intensity    0..1
+   * @param {string}      opts.playMode     "block"|"strum"|"arpUp"|"arpDown"|"arpUpDown"|"alberti"|"waltz"|"comp"|"broken"
+   * @param {string}      opts.waveType     "default"|"piano"|"harp"|"marimba"|wave type
    */
   async play(chord, {
-    sustain, intensity,
-    playMode = "block", beatMs = 667, arpeggioTarget = 4,
-    waveType = "default", startTime = null,
+    startTime    = null,
+    chordDurSec  = 2,
+    beatSec      = 0.667,
+    intensity    = 0.7,
+    playMode     = "block",
+    waveType     = "default",
   }) {
     const ac   = this._getCtx()
     const dest = this._getDest()
     if (ac.state === "suspended") await ac.resume()
 
-    const now       = startTime ?? ac.currentTime
-    const rawNotes  = buildChordMidi(chord.root, chord.intervals)
-    const midiNotes = playMode === "arpeggio"
-      ? expandArpeggio(rawNotes, arpeggioTarget)
-      : rawNotes
+    const now      = startTime ?? ac.currentTime
+    const rawNotes = buildChordMidi(chord.root, chord.intervals)
+    const schedule = buildSchedule(rawNotes, playMode, chordDurSec, beatSec)
 
-    const spread = getSpread(playMode, beatMs, arpeggioTarget)
+    // Pre-load soundfont once (fast if already cached)
+    const instrument = SF_NAMES[waveType] ? (await this.preload(waveType)) : null
 
-    const dur = playMode === "arpeggio"
-      ? Math.max(beatMs / 1000, sustain)
-      : Math.max(0.25, sustain)
+    for (const { notes, t, dur } of schedule) {
+      const at = now + t
 
-    // ── Soundfont ──
-    if (SF_NAMES[waveType]) {
-      const instrument = await this.preload(waveType)
-      const gain = (intensity * 1.6) / Math.max(midiNotes.length, 3)
-      midiNotes.forEach((midi, i) => {
-        instrument.play(midi, now + i * spread, { duration: dur, gain })
-      })
-      return rawNotes
+      if (instrument) {
+        // ── Soundfont ──
+        const gain = (intensity * 1.6) / Math.max(notes.length, 2)
+        notes.forEach(midi => instrument.play(midi, at, { duration: dur, gain }))
+
+      } else if (waveType === "default") {
+        // ── Default (harmonic) synth ──
+        const perNoteLevel = (intensity * 0.07) / Math.max(notes.length, 2)
+        notes.forEach(midi => playDefaultNote(ac, midiToFreq(midi), at, dur, perNoteLevel, dest))
+
+      } else {
+        // ── Oscillator fallback ──
+        playOscNotes(ac, notes, at, dur, intensity, waveType, dest)
+      }
     }
-
-    // ── Default synth ──
-    const perNoteLevel = (intensity * 0.07) / Math.max(midiNotes.length, 3)
-    if (waveType === "default") {
-      midiNotes.forEach((midi, i) => {
-        playDefaultNote(ac, midiToFreq(midi), now + i * spread, dur, perNoteLevel, dest)
-      })
-      return rawNotes
-    }
-
-    // ── Oscillator fallback ──
-    const master = ac.createGain()
-    master.gain.setValueAtTime(0.0001, now)
-    master.gain.exponentialRampToValueAtTime(0.15 + intensity * 0.35, now + 0.03)
-    master.gain.exponentialRampToValueAtTime(0.0001, now + dur)
-    master.connect(dest)
-
-    midiNotes.forEach((midi, i) => {
-      const osc  = ac.createOscillator()
-      const gain = ac.createGain()
-      osc.type            = waveType
-      osc.frequency.value = midiToFreq(midi)
-      gain.gain.value     = (0.65 * intensity) / Math.max(midiNotes.length, 3)
-      osc.connect(gain)
-      gain.connect(master)
-      osc.start(now + i * spread)
-      osc.stop(now + dur)
-    })
-
-    return rawNotes
   }
 }

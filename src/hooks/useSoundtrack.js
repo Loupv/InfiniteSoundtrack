@@ -77,6 +77,11 @@ export function useSoundtrack() {
     setLayersState(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l))
   }, [])
 
+  const applyPreset = useCallback((presetLayers) => {
+    setLayersState(presetLayers.map(l => ({ ...l })))
+    engineRef.current?.setLayers(presetLayers)
+  }, [])
+
   // ── Rhythm ────────────────────────────────────────────────────────────────
 
   const setRhythm = useCallback((pattern) => {
@@ -108,6 +113,7 @@ export function useSoundtrack() {
     unlock,
     setMood,
     setLayer,
+    applyPreset,
     setRhythm,
     setRhythmVol,
   }
