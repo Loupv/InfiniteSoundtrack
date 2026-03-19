@@ -4,14 +4,12 @@ import { computeSuggestionsWithMood, detectKey } from "./suggestions"
 import { AudioEngine } from "./audio"
 import { RhythmEngine } from "./rhythm"
 
-const ALL_CHORDS = buildAllChords(NOTES, CHORD_TYPES)
-
-const LOOKAHEAD_SEC  = 0.5   // schedule this far ahead
-const TICK_MS        = 200   // scheduler interval
-const PROG_LENGTH    = 4     // chords per progression
+const ALL_CHORDS      = buildAllChords(NOTES, CHORD_TYPES)
+const LOOKAHEAD_SEC   = 0.5    // schedule this many seconds ahead
+const TICK_MS         = 200    // scheduler interval
+const MIN_QUEUE_AHEAD = 8      // keep at least this many chords generated ahead
 
 // ── Scale pools by valence ────────────────────────────────────────────────────
-// [[scaleName, weightAt-1, weightAt0, weightAt+1], ...]
 const SCALE_CURVE = [
   ["harmMinor",  3.0, 0.5, 0.0],
   ["minor",      3.0, 2.5, 0.2],
@@ -25,8 +23,7 @@ const SCALE_CURVE = [
 
 function lerp(a, b, t) { return a + (b - a) * t }
 
-function sampleScalePool(valence) {
-  // valence: -1..1 → interpolate weights between negative/neutral/positive
+function sampleScale(valence) {
   const pool = SCALE_CURVE.map(([name, wNeg, wNeu, wPos]) => {
     const w = valence < 0
       ? lerp(wNeu, wNeg, -valence)
@@ -41,8 +38,6 @@ function sampleScalePool(valence) {
   }
   return SCALES[0]
 }
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function pickWeighted(scoreMap, exclude = new Set()) {
   const candidates = [...scoreMap.entries()]
@@ -61,84 +56,66 @@ function pickWeighted(scoreMap, exclude = new Set()) {
 
 function chordForLayer(chord, layer) {
   const octShift = (layer.octave - 4) * 12
-  let intervals = chord.intervals
-  if (layer.role === "bass") {
-    intervals = [octShift]  // root only
-  } else {
-    intervals = intervals.map(i => i + octShift)
-  }
+  const intervals = layer.role === "bass"
+    ? [octShift]
+    : chord.intervals.map(i => i + octShift)
   return { ...chord, intervals }
 }
 
 // ── Default layer definitions ─────────────────────────────────────────────────
 
 export const DEFAULT_LAYERS = [
-  { id: "harmony", name: "Harmonie", waveType: "piano",   playMode: "block",   octave: 4, volume: 0.7,  enabled: true,  role: "full" },
-  { id: "melody",  name: "Mélodie",  waveType: "harp",    playMode: "arpeggio",octave: 5, volume: 0.45, enabled: true,  role: "full" },
-  { id: "bass",    name: "Basse",    waveType: "default", playMode: "block",   octave: 2, volume: 0.55, enabled: true,  role: "bass" },
-  { id: "pad",     name: "Pad",      waveType: "default", playMode: "block",   octave: 3, volume: 0.3,  enabled: false, role: "full" },
+  { id: "harmony", name: "Harmonie", waveType: "piano",   playMode: "block",    octave: 4, volume: 0.7,  enabled: true,  role: "full" },
+  { id: "melody",  name: "Mélodie",  waveType: "harp",    playMode: "arpeggio", octave: 5, volume: 0.45, enabled: true,  role: "full" },
+  { id: "bass",    name: "Basse",    waveType: "default", playMode: "block",    octave: 2, volume: 0.55, enabled: true,  role: "bass" },
+  { id: "pad",     name: "Pad",      waveType: "default", playMode: "block",    octave: 3, volume: 0.3,  enabled: false, role: "full" },
 ]
 
 // ── SoundtrackEngine ──────────────────────────────────────────────────────────
 
 export class SoundtrackEngine {
   constructor() {
-    this._ac          = null
-    this._masterGain  = null
-    this._rhythmGain  = null
+    this._ac         = null
+    this._masterGain = null
+    this._rhythmGain = null
 
-    this._state       = "stopped"   // "stopped" | "playing" | "fadingIn" | "fadingOut"
+    this._state      = "stopped"  // "stopped" | "playing" | "fadingOut"
 
-    this._mood        = { valence: 0, tension: 0, energy: 0, color: 0 }
-    this._layers      = DEFAULT_LAYERS.map(l => ({ ...l }))
-    this._layerNodes  = {}   // id → { engine: AudioEngine, gainNode: GainNode }
+    this._mood       = { valence: 0, tension: 0, energy: 0, color: 0 }
+    this._layers     = DEFAULT_LAYERS.map(l => ({ ...l }))
+    this._layerNodes = {}          // id → { engine, gainNode }
 
     this._rhythmEngine  = new RhythmEngine()
     this._rhythmPattern = "none"
     this._rhythmVolume  = 0.5
 
-    this._progression = []
-    this._progIndex   = 0
-    this._nextTime    = 0   // Web Audio clock for next chord
-    this._rerollFlag  = false
+    // Continuous queue
+    // _fullQueue[_playHead]  = currently playing chord
+    // _fullQueue[0.._playHead-1] = played chords (keep last few for context)
+    // _fullQueue[_schedHead..]  = not yet scheduled
+    this._fullQueue  = []
+    this._playHead   = 0    // index of currently playing chord
+    this._schedHead  = 0    // index of next chord to schedule
 
-    this._tickTimer   = null
+    this._nextTime   = 0    // Web Audio clock for next chord to schedule
+    this._tickTimer  = null
 
-    // Callbacks (set by useSoundtrack)
-    this.onChordChange  = null   // (chord, index, progression) => void
-    this.onStateChange  = null   // (state) => void
-    this.onProgChange   = null   // (progression) => void
+    // Public callbacks
+    this.onChordChange = null  // (current, history[4], queue[7]) => void
+    this.onStateChange = null  // (state) => void
   }
 
-  // ── Accessors ──────────────────────────────────────────────────────────────
-
-  get state()    { return this._state }
-  get tempo()    { return this._moodToTempo() }
-  get beatSec()  { return 60 / this.tempo }
-  get layers()   { return this._layers }
+  get state()   { return this._state }
+  get tempo()   { return this._moodToTempo() }
+  get beatSec() { return 60 / this.tempo }
 
   // ── Mood → audio mappings ──────────────────────────────────────────────────
 
-  _moodToTempo() {
-    // energy -1..1 → 55..140 bpm
-    return Math.round(55 + (this._mood.energy + 1) * 0.5 * 85)
-  }
+  _moodToTempo()     { return Math.round(55 + (this._mood.energy + 1) * 0.5 * 85) }
+  _moodToIntensity() { return 0.4  + (this._mood.energy + 1) * 0.5 * 0.6 }
+  _moodToSustain()   { return 3.5  - (this._mood.energy + 1) * 0.5 * 2.7 }
 
-  _moodToIntensity() {
-    // energy -1..1 → 0.4..1.0
-    return 0.4 + (this._mood.energy + 1) * 0.5 * 0.6
-  }
-
-  _moodToSustain() {
-    // energy -1..1 → 3.5..0.8 (softer = longer sustain)
-    return 3.5 - (this._mood.energy + 1) * 0.5 * 2.7
-  }
-
-  _moodToArpTarget() {
-    return 6
-  }
-
-  // ── Audio context setup ────────────────────────────────────────────────────
+  // ── Audio init ─────────────────────────────────────────────────────────────
 
   _initAudio() {
     if (this._ac) return
@@ -149,57 +126,96 @@ export class SoundtrackEngine {
     this._masterGain.gain.value = 1.0
     this._masterGain.connect(this._ac.destination)
 
-    // Build layer gain nodes + engines
     this._layers.forEach(layer => {
       const gainNode = this._ac.createGain()
       gainNode.gain.value = layer.volume
       gainNode.connect(this._masterGain)
-
       const engine = new AudioEngine()
       engine.setContext(this._ac, gainNode)
-
       this._layerNodes[layer.id] = { engine, gainNode }
     })
 
-    // Rhythm gain
     this._rhythmGain = this._ac.createGain()
     this._rhythmGain.gain.value = this._rhythmVolume
     this._rhythmGain.connect(this._masterGain)
     this._rhythmEngine.setContext(this._ac, this._rhythmGain)
   }
 
-  // ── Progression generation ─────────────────────────────────────────────────
+  // ── Queue generation ───────────────────────────────────────────────────────
 
-  _generateProgression(fromChord = null) {
+  /** Generate one chord and append to _fullQueue */
+  _generateNext() {
     const { valence, tension } = this._mood
-    const scale    = sampleScalePool(valence)
-    const rootIdx  = Math.floor(Math.random() * 12)
-    const rootName = NOTES[rootIdx]
 
-    // Pick starting chord: quality matches valence
-    let startChord
-    if (fromChord) {
-      startChord = fromChord
+    if (!this._fullQueue.length) {
+      // Bootstrap: pick a starting chord
+      const scale     = sampleScale(valence)
+      const rootName  = NOTES[Math.floor(Math.random() * 12)]
+      const suffix    = valence >= 0 ? "" : "m"
+      const start     = ALL_CHORDS.find(c => c.root === rootName && c.suffix === suffix)
+                     ?? ALL_CHORDS.find(c => c.root === rootName)
+      if (start) this._fullQueue.push(start)
+      return
+    }
+
+    // Use the last 8 chords as harmonic context
+    const ctx     = this._fullQueue.slice(Math.max(0, this._fullQueue.length - 8))
+    const exclude = new Set(this._fullQueue.slice(-3).map(c => c.name))
+    const suggs   = computeSuggestionsWithMood(ctx, ALL_CHORDS, { valence, tension })
+    const name    = pickWeighted(suggs, exclude)
+    const next    = name ? ALL_CHORDS.find(c => c.name === name) : null
+
+    if (next) {
+      this._fullQueue.push(next)
     } else {
-      const wantSuffix = valence >= 0 ? "" : "m"
-      startChord =
-        ALL_CHORDS.find(c => c.root === rootName && c.suffix === wantSuffix) ??
-        ALL_CHORDS.find(c => c.root === rootName)
+      // Fallback: modulate by fifth
+      const lastRoot = NOTES.indexOf(this._fullQueue.at(-1).root)
+      const newRoot  = NOTES[(lastRoot + 7) % 12]
+      const suffix   = valence >= 0 ? "" : "m"
+      const fallback = ALL_CHORDS.find(c => c.root === newRoot && c.suffix === suffix)
+      if (fallback) this._fullQueue.push(fallback)
     }
+  }
 
-    if (!startChord) return []
-
-    const prog = [startChord]
-    const seen = new Set([startChord.name])
-
-    for (let i = 1; i < PROG_LENGTH; i++) {
-      const suggs = computeSuggestionsWithMood(prog, ALL_CHORDS, { valence, tension })
-      const name  = pickWeighted(suggs, seen)
-      const next  = name ? ALL_CHORDS.find(c => c.name === name) : null
-      if (next) { prog.push(next); seen.add(next.name) }
+  /** Fill queue up to MIN_QUEUE_AHEAD chords ahead of _schedHead */
+  _fillQueue() {
+    while (this._fullQueue.length < this._schedHead + MIN_QUEUE_AHEAD) {
+      this._generateNext()
     }
+  }
 
-    return prog
+  /** Trim old played chords to avoid unbounded memory growth */
+  _compact() {
+    const KEEP_HISTORY = 10
+    if (this._playHead > KEEP_HISTORY * 2) {
+      const trim        = this._playHead - KEEP_HISTORY
+      this._fullQueue   = this._fullQueue.slice(trim)
+      this._schedHead  -= trim
+      this._playHead   -= trim
+    }
+  }
+
+  /** Build the UI snapshot arrays from current state */
+  _snapshot() {
+    const current = this._fullQueue[this._playHead] ?? null
+    const history = this._fullQueue.slice(Math.max(0, this._playHead - 4), this._playHead)
+    const queue   = this._fullQueue.slice(this._playHead + 1, this._playHead + 1 + MIN_QUEUE_AHEAD - 1)
+    return { current, history, queue }
+  }
+
+  _notify() {
+    const { current, history, queue } = this._snapshot()
+    this.onChordChange?.(current, history, queue)
+  }
+
+  // ── Invalidate future queue on mood change ─────────────────────────────────
+
+  _invalidateQueue() {
+    // Keep only the chords that have been/are being scheduled (up to schedHead)
+    // Unscheduled future chords are discarded and regenerated with new mood
+    this._fullQueue = this._fullQueue.slice(0, this._schedHead)
+    this._fillQueue()
+    this._notify()
   }
 
   // ── Scheduler ─────────────────────────────────────────────────────────────
@@ -207,79 +223,65 @@ export class SoundtrackEngine {
   _tick() {
     if (this._state === "stopped") return
 
-    const ac  = this._ac
-    const now = ac.currentTime
+    const ac       = this._ac
+    const now      = ac.currentTime
+    const beatSec  = this.beatSec
+    const chordDur = beatSec * 4   // 1 bar = 4 beats
+    const beatMs   = beatSec * 1000
+    const sustain  = Math.min(this._moodToSustain(), chordDur * 0.92)
+    const intensity = this._moodToIntensity()
 
-    // Ensure we always have a valid progression
-    if (!this._progression.length) {
-      this._progression = this._generateProgression()
-      this._progIndex   = 0
-      this._nextTime    = now + 0.05
-      this.onProgChange?.(this._progression)
-    }
+    this._fillQueue()
 
     while (this._nextTime < now + LOOKAHEAD_SEC) {
-      const chord    = this._progression[this._progIndex]
-      const beatSec  = this.beatSec
-      const chordDur = beatSec * 4   // 1 bar = 4 beats
-      const beatMs   = beatSec * 1000
-      const sustain  = Math.min(this._moodToSustain(), chordDur * 0.9)
-      const intensity = this._moodToIntensity()
+      if (this._schedHead >= this._fullQueue.length) {
+        this._fillQueue()
+        if (this._schedHead >= this._fullQueue.length) break
+      }
+
+      const chord    = this._fullQueue[this._schedHead]
+      const chordIdx = this._schedHead
 
       // Schedule each enabled layer
       this._layers.forEach(layer => {
         if (!layer.enabled) return
         const { engine } = this._layerNodes[layer.id] ?? {}
         if (!engine) return
-
-        const layerChord = chordForLayer(chord, layer)
-        engine.play(layerChord, {
-          startTime:     this._nextTime,
+        engine.play(chordForLayer(chord, layer), {
+          startTime:      this._nextTime,
           sustain,
           intensity,
-          playMode:      layer.playMode,
+          playMode:       layer.playMode,
           beatMs,
-          arpeggioTarget: this._moodToArpTarget(),
-          waveType:      layer.waveType,
+          arpeggioTarget: Math.max(4, chord.intervals?.length ?? 3),
+          waveType:       layer.waveType,
         })
       })
 
-      // Schedule rhythm (1 bar, aligned with chord)
+      // Schedule rhythm
       if (this._rhythmPattern !== "none") {
         this._rhythmEngine.scheduleBar(this._nextTime, beatSec, 1)
       }
 
-      // Schedule UI update callback
-      const delay = Math.max(0, (this._nextTime - now) * 1000 - 50)
-      const chordSnapshot = { ...chord }
-      const idx = this._progIndex
-      const progSnapshot = [...this._progression]
+      // UI callback when this chord actually starts playing
+      const delay = Math.max(0, (this._nextTime - now) * 1000 - 30)
       setTimeout(() => {
-        if (this._state !== "stopped") {
-          this.onChordChange?.(chordSnapshot, idx, progSnapshot)
-        }
+        if (this._state === "stopped") return
+        this._playHead = chordIdx
+        this._compact()
+        this._notify()
       }, delay)
 
+      this._schedHead++
       this._nextTime += chordDur
-      this._progIndex = (this._progIndex + 1) % this._progression.length
-
-      // Reroll: regenerate on next cycle start
-      if (this._progIndex === 0 && this._rerollFlag) {
-        this._rerollFlag  = false
-        const last = this._progression[this._progression.length - 1]
-        this._progression = this._generateProgression(last)
-        this.onProgChange?.(this._progression)
-      }
     }
 
     this._tickTimer = setTimeout(() => this._tick(), TICK_MS)
   }
 
   _stopTick() {
-    if (this._tickTimer) {
-      clearTimeout(this._tickTimer)
-      this._tickTimer = null
-    }
+    clearTimeout(this._tickTimer)
+    this._tickTimer = null
   }
 
   _setState(s) {
@@ -292,21 +294,24 @@ export class SoundtrackEngine {
   start() {
     this._initAudio()
     if (this._ac.state === "suspended") this._ac.resume()
-
     if (this._state !== "stopped") return
 
     this._masterGain.gain.cancelScheduledValues(this._ac.currentTime)
     this._masterGain.gain.setValueAtTime(1, this._ac.currentTime)
 
-    this._progression = this._generateProgression()
-    this._progIndex   = 0
-    this._nextTime    = this._ac.currentTime + 0.05
-    this.onProgChange?.(this._progression)
+    // Generate initial queue if empty
+    if (!this._fullQueue.length) {
+      this._fillQueue()
+      this._playHead  = 0
+      this._schedHead = 0
+    }
 
+    this._nextTime = this._ac.currentTime + 0.05
     this._setState("playing")
     this._tick()
+    this._notify()
 
-    // Preload soundfont instruments in background
+    // Preload soundfonts in background
     this._layers.forEach(layer => {
       const { engine } = this._layerNodes[layer.id] ?? {}
       if (engine && ["piano","harp","marimba"].includes(layer.waveType)) {
@@ -335,13 +340,16 @@ export class SoundtrackEngine {
     this._masterGain.gain.linearRampToValueAtTime(1, now + durationSec)
 
     if (this._state === "stopped") {
-      this._progression = this._generateProgression()
-      this._progIndex   = 0
-      this._nextTime    = now + 0.05
-      this.onProgChange?.(this._progression)
+      if (!this._fullQueue.length) {
+        this._fillQueue()
+        this._playHead  = 0
+        this._schedHead = 0
+      }
+      this._nextTime = now + 0.05
     }
     this._setState("playing")
     if (!this._tickTimer) this._tick()
+    this._notify()
   }
 
   fadeOut(durationSec = 3) {
@@ -356,11 +364,25 @@ export class SoundtrackEngine {
 
   reroll() {
     if (this._state === "stopped") return
-    this._rerollFlag = true
+    // Discard everything after the currently-scheduled head
+    this._fullQueue  = this._fullQueue.slice(0, this._schedHead)
+    this._fillQueue()
+    this._notify()
   }
 
   setMood(mood) {
     this._mood = { ...this._mood, ...mood }
+    // Pre-generate updated upcoming chords so the UI updates immediately
+    // (only if not stopped)
+    if (this._fullQueue.length) {
+      this._invalidateQueue()
+    }
+  }
+
+  /** Pre-generate the visible queue without starting playback (for UI preview) */
+  pregenerate() {
+    this._fillQueue()
+    this._notify()
   }
 
   setLayers(layers) {

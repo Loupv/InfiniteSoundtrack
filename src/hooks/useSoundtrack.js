@@ -3,9 +3,9 @@ import { NOTES, SCALES } from "../constants"
 import { SoundtrackEngine, DEFAULT_LAYERS } from "../engine/soundtrack"
 import { detectKey } from "../engine/suggestions"
 
-function getKeyLabel(progression) {
-  if (!progression.length) return null
-  const { root, scale } = detectKey(progression)
+function getKeyLabel(chords) {
+  if (!chords.length) return null
+  const { root, scale } = detectKey(chords)
   const scaleName = SCALES.find(([, s]) => s.join() === scale.join())?.[0] ?? "?"
   return `${NOTES[root]} ${scaleName}`
 }
@@ -13,37 +13,44 @@ function getKeyLabel(progression) {
 export function useSoundtrack() {
   const engineRef = useRef(null)
 
-  const [state,         setState]         = useState("stopped")
-  const [currentChord,  setCurrentChord]  = useState(null)
-  const [currentIndex,  setCurrentIndex]  = useState(0)
-  const [progression,   setProgression]   = useState([])
-  const [mood,          setMoodState]     = useState({ valence: 0, tension: 0, energy: 0, color: 0 })
-  const [layers,        setLayersState]   = useState(() => DEFAULT_LAYERS.map(l => ({ ...l })))
+  const [state,         setState]        = useState("stopped")
+  const [currentChord,  setCurrentChord] = useState(null)
+  const [history,       setHistory]      = useState([])   // last 4 played chords
+  const [queue,         setQueue]        = useState([])   // upcoming chords
+  const [mood,          setMoodState]    = useState({ valence: 0, tension: 0, energy: 0, color: 0 })
+  const [layers,        setLayersState]  = useState(() => DEFAULT_LAYERS.map(l => ({ ...l })))
   const [rhythmPattern, setRhythmPattern] = useState("none")
   const [rhythmVolume,  setRhythmVolume]  = useState(0.5)
 
   function _getEngine() {
     if (!engineRef.current) {
       const eng = new SoundtrackEngine()
-      eng.onChordChange = (chord, idx, prog) => {
-        setCurrentChord(chord)
-        setCurrentIndex(idx)
-        setProgression([...prog])
+      eng.onChordChange = (current, hist, q) => {
+        setCurrentChord(current)
+        setHistory([...hist])
+        setQueue([...q])
       }
       eng.onStateChange = s => setState(s)
-      eng.onProgChange  = prog => setProgression([...prog])
       engineRef.current = eng
+      // Pre-generate queue so UI shows upcoming chords immediately
+      eng.pregenerate()
     }
     return engineRef.current
   }
+
+  // Init engine on mount so upcoming chords are visible before play
+  useEffect(() => { _getEngine() }, [])
 
   // Push layer config into engine whenever it changes
   useEffect(() => {
     engineRef.current?.setLayers(layers)
   }, [layers])
 
-  const tempo      = useMemo(() => Math.round(55 + (mood.energy + 1) * 0.5 * 85), [mood.energy])
-  const detectedKey = useMemo(() => getKeyLabel(progression), [progression])
+  const tempo       = useMemo(() => Math.round(55 + (mood.energy + 1) * 0.5 * 85), [mood.energy])
+  const detectedKey = useMemo(() => {
+    const context = [...history, currentChord].filter(Boolean)
+    return getKeyLabel(context)
+  }, [history, currentChord])
 
   // ── Transport ─────────────────────────────────────────────────────────────
 
@@ -68,7 +75,6 @@ export function useSoundtrack() {
 
   const setLayer = useCallback((id, updates) => {
     setLayersState(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l))
-    // engine sync handled by useEffect
   }, [])
 
   // ── Rhythm ────────────────────────────────────────────────────────────────
@@ -86,8 +92,8 @@ export function useSoundtrack() {
   return {
     state,
     currentChord,
-    currentIndex,
-    progression,
+    history,
+    queue,
     detectedKey,
     mood,
     layers,

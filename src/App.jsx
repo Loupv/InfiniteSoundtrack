@@ -10,7 +10,7 @@ function track(name, params = {}) {
 
 export default function App() {
   const {
-    state, currentChord, currentIndex, progression, detectedKey, tempo,
+    state, currentChord, history, queue, detectedKey, tempo,
     mood, layers, rhythmPattern, rhythmVolume,
     play, stop, fadeIn, fadeOut, reroll, unlock,
     setMood, setLayer, setRhythm, setRhythmVol,
@@ -103,8 +103,8 @@ export default function App() {
         <div style={{ marginBottom: 12 }}>
           <NowPlaying
             currentChord={currentChord}
-            currentIndex={currentIndex}
-            progression={progression}
+            history={history}
+            queue={queue}
             detectedKey={detectedKey}
             tempo={tempo}
             state={state}
