@@ -209,13 +209,13 @@ export function buildSchedule(midiNotes, playMode, chordDurSec, beatSec) {
 // Micro-timing and velocity jitter to break the mechanical feel.
 
 function humanizeTime(t) {
-  // ±12ms jitter — subtle but perceptible
-  return t + (Math.random() - 0.5) * 0.024
+  // ±25ms jitter — noticeable, human-like
+  return t + (Math.random() - 0.5) * 0.050
 }
 
 function humanizeGain(g) {
-  // ±10% velocity variation
-  return g * (1 + (Math.random() - 0.5) * 0.2)
+  // ±20% velocity variation for dynamic expression
+  return g * (1 + (Math.random() - 0.5) * 0.4)
 }
 
 // ── AudioEngine ───────────────────────────────────────────────────────────────
@@ -280,13 +280,14 @@ export class AudioEngine {
     intensity    = 0.7,
     playMode     = "block",
     waveType     = "default",
+    _rawMidi     = null,
   }) {
     const ac   = this._getCtx()
     const dest = this._getDest()
     if (ac.state === "suspended") await ac.resume()
 
     const now      = startTime ?? ac.currentTime
-    const rawNotes = buildChordMidi(chord.root, chord.intervals)
+    const rawNotes = _rawMidi ?? buildChordMidi(chord.root, chord.intervals)
     const suffix   = chord.suffix ?? chord.name?.replace(chord.root, "") ?? ""
     const schedule = buildSchedule(rawNotes, playMode, chordDurSec, beatSec)
 
