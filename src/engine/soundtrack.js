@@ -1,8 +1,10 @@
 import { NOTES, CHORD_TYPES, SCALES } from "../constants"
 import { buildAllChords } from "../musicUtils"
 import { computeSuggestionsWithMood, detectKey } from "./suggestions"
-import { AudioEngine } from "./audio"
+import { AudioEngine, buildSchedule } from "./audio"
 import { RhythmEngine } from "./rhythm"
+import { MelodyGenerator } from "./melody"
+import { VoicingEngine } from "./voicing"
 
 const ALL_CHORDS      = buildAllChords(NOTES, CHORD_TYPES)
 const LOOKAHEAD_SEC   = 0.5    // schedule this many seconds ahead
@@ -54,59 +56,51 @@ function pickWeighted(scoreMap, exclude = new Set()) {
   return candidates[0][0]
 }
 
-function chordForLayer(chord, layer) {
-  const octShift = (layer.octave - 4) * 12
-  const intervals = layer.role === "bass"
-    ? [octShift]
-    : chord.intervals.map(i => i + octShift)
-  return { ...chord, intervals }
-}
-
 // ── Layer definitions & presets ───────────────────────────────────────────────
 
 export const DEFAULT_LAYERS = [
-  { id: "harmony", name: "Harmonie", waveType: "piano",   playMode: "block",   octave: 4, volume: 0.65, enabled: true,  role: "full" },
-  { id: "melody",  name: "Mélodie",  waveType: "harp",    playMode: "arpUp",   octave: 5, volume: 0.45, enabled: true,  role: "full" },
-  { id: "bass",    name: "Basse",    waveType: "default", playMode: "block",   octave: 2, volume: 0.55, enabled: true,  role: "bass" },
-  { id: "pad",     name: "Pad",      waveType: "default", playMode: "block",   octave: 3, volume: 0.3,  enabled: false, role: "full" },
+  { id: "harmony", name: "Harmonie", waveType: "piano",   playMode: "block",   octave: 4, volume: 0.55, enabled: true,  role: "harmony" },
+  { id: "melody",  name: "Mélodie",  waveType: "piano",   playMode: "melody",  octave: 5, volume: 0.50, enabled: true,  role: "melody" },
+  { id: "bass",    name: "Basse",    waveType: "default", playMode: "bass",    octave: 2, volume: 0.55, enabled: true,  role: "bass" },
+  { id: "pad",     name: "Pad",      waveType: "default", playMode: "block",   octave: 3, volume: 0.25, enabled: false, role: "pad" },
 ]
 
 export const LAYER_PRESETS = {
   "Défaut": DEFAULT_LAYERS,
 
   "Piano classique": [
-    { id: "harmony", name: "Main droite",  waveType: "piano",   playMode: "arpUp",    octave: 5, volume: 0.6,  enabled: true,  role: "full" },
-    { id: "melody",  name: "Main gauche",  waveType: "piano",   playMode: "alberti",  octave: 3, volume: 0.55, enabled: true,  role: "full" },
-    { id: "bass",    name: "Sub",          waveType: "default", playMode: "block",    octave: 2, volume: 0.35, enabled: true,  role: "bass" },
-    { id: "pad",     name: "Shimmer",      waveType: "harp",    playMode: "arpUpDown",octave: 6, volume: 0.2,  enabled: false, role: "full" },
+    { id: "harmony", name: "Main droite",  waveType: "piano",   playMode: "arpUp",    octave: 4, volume: 0.50, enabled: true,  role: "harmony" },
+    { id: "melody",  name: "Mélodie",      waveType: "piano",   playMode: "melody",   octave: 5, volume: 0.55, enabled: true,  role: "melody" },
+    { id: "bass",    name: "Main gauche",  waveType: "piano",   playMode: "bass",     octave: 3, volume: 0.50, enabled: true,  role: "bass" },
+    { id: "pad",     name: "Shimmer",      waveType: "harp",    playMode: "arpUpDown",octave: 6, volume: 0.15, enabled: false, role: "pad" },
   ],
 
   "Jazz": [
-    { id: "harmony", name: "Comping",      waveType: "piano",   playMode: "comp",     octave: 4, volume: 0.7,  enabled: true,  role: "full" },
-    { id: "melody",  name: "Mélodie",      waveType: "harp",    playMode: "arpUp",    octave: 5, volume: 0.4,  enabled: true,  role: "full" },
-    { id: "bass",    name: "Basse jazz",   waveType: "default", playMode: "waltz",    octave: 2, volume: 0.6,  enabled: true,  role: "full" },
-    { id: "pad",     name: "Pad",          waveType: "default", playMode: "block",    octave: 3, volume: 0.15, enabled: false, role: "full" },
+    { id: "harmony", name: "Comping",      waveType: "piano",   playMode: "comp",     octave: 4, volume: 0.60, enabled: true,  role: "harmony" },
+    { id: "melody",  name: "Mélodie",      waveType: "harp",    playMode: "melody",   octave: 5, volume: 0.50, enabled: true,  role: "melody" },
+    { id: "bass",    name: "Walking bass",  waveType: "default", playMode: "bass",    octave: 2, volume: 0.55, enabled: true,  role: "bass" },
+    { id: "pad",     name: "Pad",          waveType: "default", playMode: "block",    octave: 3, volume: 0.15, enabled: false, role: "pad" },
   ],
 
   "Valse": [
-    { id: "harmony", name: "Mélodie",      waveType: "piano",   playMode: "arpUp",    octave: 5, volume: 0.6,  enabled: true,  role: "full" },
-    { id: "melody",  name: "Accomp.",      waveType: "piano",   playMode: "waltz",    octave: 3, volume: 0.5,  enabled: true,  role: "full" },
-    { id: "bass",    name: "Sub",          waveType: "default", playMode: "block",    octave: 2, volume: 0.3,  enabled: true,  role: "bass" },
-    { id: "pad",     name: "Harpe",        waveType: "harp",    playMode: "arpDown",  octave: 5, volume: 0.25, enabled: false, role: "full" },
+    { id: "harmony", name: "Accomp.",      waveType: "piano",   playMode: "waltz",    octave: 4, volume: 0.50, enabled: true,  role: "harmony" },
+    { id: "melody",  name: "Mélodie",      waveType: "piano",   playMode: "melody",   octave: 5, volume: 0.55, enabled: true,  role: "melody" },
+    { id: "bass",    name: "Basse",        waveType: "default", playMode: "bass",     octave: 2, volume: 0.45, enabled: true,  role: "bass" },
+    { id: "pad",     name: "Harpe",        waveType: "harp",    playMode: "arpDown",  octave: 5, volume: 0.20, enabled: false, role: "pad" },
   ],
 
   "Ambient": [
-    { id: "harmony", name: "Pad lent",     waveType: "piano",   playMode: "arpUpDown",octave: 4, volume: 0.5,  enabled: true,  role: "full" },
-    { id: "melody",  name: "Harpe",        waveType: "harp",    playMode: "arpDown",  octave: 5, volume: 0.35, enabled: true,  role: "full" },
-    { id: "bass",    name: "Sub",          waveType: "default", playMode: "block",    octave: 2, volume: 0.4,  enabled: true,  role: "bass" },
-    { id: "pad",     name: "Shimmer",      waveType: "harp",    playMode: "arpUp",    octave: 6, volume: 0.2,  enabled: true,  role: "full" },
+    { id: "harmony", name: "Pad lent",     waveType: "piano",   playMode: "arpUpDown",octave: 4, volume: 0.45, enabled: true,  role: "harmony" },
+    { id: "melody",  name: "Mélodie",      waveType: "harp",    playMode: "melody",   octave: 5, volume: 0.40, enabled: true,  role: "melody" },
+    { id: "bass",    name: "Sub",          waveType: "default", playMode: "bass",     octave: 2, volume: 0.40, enabled: true,  role: "bass" },
+    { id: "pad",     name: "Shimmer",      waveType: "harp",    playMode: "arpUp",    octave: 6, volume: 0.20, enabled: true,  role: "pad" },
   ],
 
   "Baroque": [
-    { id: "harmony", name: "Continuo",     waveType: "harp",    playMode: "broken",   octave: 4, volume: 0.6,  enabled: true,  role: "full" },
-    { id: "melody",  name: "Mélodie",      waveType: "harp",    playMode: "arpUp",    octave: 5, volume: 0.5,  enabled: true,  role: "full" },
-    { id: "bass",    name: "Basse",        waveType: "default", playMode: "block",    octave: 2, volume: 0.5,  enabled: true,  role: "bass" },
-    { id: "pad",     name: "Pad",          waveType: "default", playMode: "block",    octave: 3, volume: 0.15, enabled: false, role: "full" },
+    { id: "harmony", name: "Continuo",     waveType: "harp",    playMode: "broken",   octave: 4, volume: 0.50, enabled: true,  role: "harmony" },
+    { id: "melody",  name: "Mélodie",      waveType: "harp",    playMode: "melody",   octave: 5, volume: 0.50, enabled: true,  role: "melody" },
+    { id: "bass",    name: "Basse",        waveType: "default", playMode: "bass",     octave: 2, volume: 0.45, enabled: true,  role: "bass" },
+    { id: "pad",     name: "Pad",          waveType: "default", playMode: "block",    octave: 3, volume: 0.15, enabled: false, role: "pad" },
   ],
 }
 
@@ -128,20 +122,21 @@ export class SoundtrackEngine {
     this._rhythmPattern = "none"
     this._rhythmVolume  = 0.5
 
-    // Continuous queue
-    // _fullQueue[_playHead]  = currently playing chord
-    // _fullQueue[0.._playHead-1] = played chords (keep last few for context)
-    // _fullQueue[_schedHead..]  = not yet scheduled
-    this._fullQueue  = []
-    this._playHead   = 0    // index of currently playing chord
-    this._schedHead  = 0    // index of next chord to schedule
+    // Musical intelligence
+    this._melodyGen  = new MelodyGenerator()
+    this._voicingEng = new VoicingEngine()
 
-    this._nextTime   = 0    // Web Audio clock for next chord to schedule
+    // Continuous queue
+    this._fullQueue  = []
+    this._playHead   = 0
+    this._schedHead  = 0
+
+    this._nextTime   = 0
     this._tickTimer  = null
 
     // Public callbacks
-    this.onChordChange = null  // (current, history[4], queue[7]) => void
-    this.onStateChange = null  // (state) => void
+    this.onChordChange = null
+    this.onStateChange = null
   }
 
   get state()   { return this._state }
@@ -182,12 +177,10 @@ export class SoundtrackEngine {
 
   // ── Queue generation ───────────────────────────────────────────────────────
 
-  /** Generate one chord and append to _fullQueue */
   _generateNext() {
     const { valence, tension } = this._mood
 
     if (!this._fullQueue.length) {
-      // Bootstrap: pick a starting chord
       const scale     = sampleScale(valence)
       const rootName  = NOTES[Math.floor(Math.random() * 12)]
       const suffix    = valence >= 0 ? "" : "m"
@@ -197,7 +190,6 @@ export class SoundtrackEngine {
       return
     }
 
-    // Use the last 8 chords as harmonic context
     const ctx     = this._fullQueue.slice(Math.max(0, this._fullQueue.length - 8))
     const exclude = new Set(this._fullQueue.slice(-3).map(c => c.name))
     const suggs   = computeSuggestionsWithMood(ctx, ALL_CHORDS, { valence, tension })
@@ -207,7 +199,6 @@ export class SoundtrackEngine {
     if (next) {
       this._fullQueue.push(next)
     } else {
-      // Fallback: modulate by fifth
       const lastRoot = NOTES.indexOf(this._fullQueue.at(-1).root)
       const newRoot  = NOTES[(lastRoot + 7) % 12]
       const suffix   = valence >= 0 ? "" : "m"
@@ -216,14 +207,12 @@ export class SoundtrackEngine {
     }
   }
 
-  /** Fill queue up to MIN_QUEUE_AHEAD chords ahead of _schedHead */
   _fillQueue() {
     while (this._fullQueue.length < this._schedHead + MIN_QUEUE_AHEAD) {
       this._generateNext()
     }
   }
 
-  /** Trim old played chords to avoid unbounded memory growth */
   _compact() {
     const KEEP_HISTORY = 10
     if (this._playHead > KEEP_HISTORY * 2) {
@@ -234,7 +223,6 @@ export class SoundtrackEngine {
     }
   }
 
-  /** Build the UI snapshot arrays from current state */
   _snapshot() {
     const current = this._fullQueue[this._playHead] ?? null
     const history = this._fullQueue.slice(Math.max(0, this._playHead - 4), this._playHead)
@@ -247,14 +235,118 @@ export class SoundtrackEngine {
     this.onChordChange?.(current, history, queue)
   }
 
-  // ── Invalidate future queue on mood change ─────────────────────────────────
-
   _invalidateQueue() {
-    // Keep only the chords that have been/are being scheduled (up to schedHead)
-    // Unscheduled future chords are discarded and regenerated with new mood
     this._fullQueue = this._fullQueue.slice(0, this._schedHead)
     this._fillQueue()
     this._notify()
+  }
+
+  // ── Play a single chord through all layers ────────────────────────────────
+
+  _scheduleChord(chord, startTime, chordDur, beatSec, intensity) {
+    const { valence, tension, energy } = this._mood
+
+    // Detect current key for melody
+    const ctx = this._fullQueue.slice(
+      Math.max(0, this._schedHead - 8), this._schedHead + 1
+    )
+    const { root: keyRoot, scale: keyScale } = detectKey(ctx)
+
+    // Get next chord for bass approach notes
+    const nextChord = this._fullQueue[this._schedHead + 1] ?? null
+
+    // Generate voicing (intelligent inversions + voice leading)
+    const voicing = this._voicingEng.voice(chord, { octave: 4, style: "auto" })
+
+    this._layers.forEach(layer => {
+      if (!layer.enabled) return
+      const { engine } = this._layerNodes[layer.id] ?? {}
+      if (!engine) return
+
+      if (layer.role === "melody" || layer.playMode === "melody") {
+        // ── True melodic generation ──────────────────────────────────
+        const melodyNotes = this._melodyGen.generate(chord, keyRoot, keyScale, {
+          octave: layer.octave,
+          energy,
+          tension,
+          valence,
+          chordDurSec: chordDur,
+          beatSec,
+        })
+
+        for (const note of melodyNotes) {
+          const at = startTime + note.t
+          const noteMidi = note.midi
+          const suffix = chord.suffix ?? ""
+
+          engine.play(
+            { root: chord.root, intervals: [0], suffix },
+            {
+              startTime: at,
+              chordDurSec: note.dur,
+              beatSec,
+              intensity: intensity * note.velocity,
+              playMode: "block",
+              waveType: layer.waveType,
+              _rawMidi: [noteMidi],
+            }
+          )
+        }
+
+      } else if (layer.role === "bass" || layer.playMode === "bass") {
+        // ── Intelligent bass line ────────────────────────────────────
+        const bassNotes = this._voicingEng.bassLine(
+          chord, nextChord, layer.octave, chordDur, beatSec, energy
+        )
+
+        for (const note of bassNotes) {
+          engine.play(
+            { root: chord.root, intervals: [0], suffix: chord.suffix ?? "" },
+            {
+              startTime: startTime + note.t,
+              chordDurSec: note.dur,
+              beatSec,
+              intensity: intensity * note.velocity,
+              playMode: "block",
+              waveType: layer.waveType,
+              _rawMidi: [note.midi],
+            }
+          )
+        }
+
+      } else if (layer.role === "harmony") {
+        // ── Voiced harmony (with inversions) ─────────────────────────
+        engine.play(
+          { root: chord.root, intervals: chord.intervals, suffix: chord.suffix ?? "" },
+          {
+            startTime,
+            chordDurSec: chordDur,
+            beatSec,
+            intensity,
+            playMode: layer.playMode,
+            waveType: layer.waveType,
+            _rawMidi: voicing.notes,
+          }
+        )
+
+      } else {
+        // ── Pad or other layers: use voiced notes ────────────────────
+        const octShift = (layer.octave - 4) * 12
+        const padNotes = voicing.notes.map(n => n + octShift)
+        engine.play(
+          { root: chord.root, intervals: chord.intervals, suffix: chord.suffix ?? "" },
+          {
+            startTime,
+            chordDurSec: chordDur,
+            beatSec,
+            intensity: intensity * 0.6,
+            playMode: layer.playMode,
+            waveType: layer.waveType,
+            _rawMidi: padNotes,
+          }
+        )
+      }
+    })
   }
 
   // ── Scheduler ─────────────────────────────────────────────────────────────
@@ -265,7 +357,7 @@ export class SoundtrackEngine {
     const ac       = this._ac
     const now      = ac.currentTime
     const beatSec   = this.beatSec
-    const chordDur  = beatSec * 4   // 1 bar = 4 beats
+    const chordDur  = beatSec * 4
     const intensity = this._moodToIntensity()
 
     this._fillQueue()
@@ -279,20 +371,8 @@ export class SoundtrackEngine {
       const chord    = this._fullQueue[this._schedHead]
       const chordIdx = this._schedHead
 
-      // Schedule each enabled layer
-      this._layers.forEach(layer => {
-        if (!layer.enabled) return
-        const { engine } = this._layerNodes[layer.id] ?? {}
-        if (!engine) return
-        engine.play(chordForLayer(chord, layer), {
-          startTime:   this._nextTime,
-          chordDurSec: chordDur,
-          beatSec,
-          intensity,
-          playMode:    layer.playMode,
-          waveType:    layer.waveType,
-        })
-      })
+      // Schedule all layers with musical intelligence
+      this._scheduleChord(chord, this._nextTime, chordDur, beatSec, intensity)
 
       // Schedule rhythm
       if (this._rhythmPattern !== "none") {
@@ -335,7 +415,6 @@ export class SoundtrackEngine {
     this._masterGain.gain.cancelScheduledValues(this._ac.currentTime)
     this._masterGain.gain.setValueAtTime(1, this._ac.currentTime)
 
-    // Generate initial queue if empty
     if (!this._fullQueue.length) {
       this._fillQueue()
       this._playHead  = 0
@@ -347,7 +426,6 @@ export class SoundtrackEngine {
     this._tick()
     this._notify()
 
-    // Preload soundfonts in background
     this._layers.forEach(layer => {
       const { engine } = this._layerNodes[layer.id] ?? {}
       if (engine && ["piano","harp","marimba"].includes(layer.waveType)) {
@@ -400,22 +478,20 @@ export class SoundtrackEngine {
 
   reroll() {
     if (this._state === "stopped") return
-    // Discard everything after the currently-scheduled head
     this._fullQueue  = this._fullQueue.slice(0, this._schedHead)
+    this._melodyGen.reset()
+    this._voicingEng.reset()
     this._fillQueue()
     this._notify()
   }
 
   setMood(mood) {
     this._mood = { ...this._mood, ...mood }
-    // Pre-generate updated upcoming chords so the UI updates immediately
-    // (only if not stopped)
     if (this._fullQueue.length) {
       this._invalidateQueue()
     }
   }
 
-  /** Pre-generate the visible queue without starting playback (for UI preview) */
   pregenerate() {
     this._fillQueue()
     this._notify()
