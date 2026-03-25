@@ -45,11 +45,13 @@ function pickWeighted(scoreMap, exclude = new Set()) {
   const candidates = [...scoreMap.entries()]
     .filter(([name]) => !exclude.has(name))
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 14)
+    .slice(0, 6)  // narrower pool = more structured choices
   if (!candidates.length) return null
-  const total = candidates.reduce((s, [, v]) => s + v, 0)
+  // Square the scores to strongly favor top candidates
+  const squared = candidates.map(([name, score]) => [name, score * score])
+  const total = squared.reduce((s, [, v]) => s + v, 0)
   let rand = Math.random() * total
-  for (const [name, score] of candidates) {
+  for (const [name, score] of squared) {
     rand -= score
     if (rand <= 0) return name
   }
