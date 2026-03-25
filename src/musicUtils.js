@@ -40,7 +40,7 @@ export function chordPitchClasses(chord) {
 
 export function buildAllChords(notes, chordTypes) {
   return notes.flatMap(note =>
-    chordTypes.map(type => ({ name: `${note}${type.suffix}`, root: note, intervals: type.intervals }))
+    chordTypes.map(type => ({ name: `${note}${type.suffix}`, root: note, suffix: type.suffix, intervals: type.intervals }))
   )
 }
 
@@ -102,6 +102,6 @@ export function spellNote(rootName, semitones, notation = "english") {
 export function buildGroupedChords(notes, chordTypes) {
   return notes.map(note => ({
     note,
-    chords: chordTypes.map(type => ({ name: `${note}${type.suffix}`, root: note, intervals: type.intervals })),
+    chords: chordTypes.map(type => ({ name: `${note}${type.suffix}`, root: note, suffix: type.suffix, intervals: type.intervals })),
   }))
 }
