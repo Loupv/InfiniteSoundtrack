@@ -11,15 +11,34 @@ const PIANO_HARMONICS = [
   { ratio: 6.0100, gain: 0.03 },
 ]
 
-function playDefaultNote(ac, freq, startTime, dur, perNoteLevel, dest) {
+// Chord quality → filter character for timbral variety
+function getFilterParams(suffix) {
+  if (suffix === "m" || suffix === "m7" || suffix === "m6")
+    return { maxMult: 8, midMult: 3.5, endMult: 1.8, attack: 0.12, Q: 0.5 }
+  if (suffix === "dim")
+    return { maxMult: 6, midMult: 2.5, endMult: 1.5, attack: 0.15, Q: 0.4 }
+  if (suffix === "aug")
+    return { maxMult: 18, midMult: 7, endMult: 3, attack: 0.05, Q: 0.9 }
+  if (suffix === "7" || suffix === "9" || suffix === "11")
+    return { maxMult: 11, midMult: 4, endMult: 2.2, attack: 0.07, Q: 0.8 }
+  if (suffix === "maj7")
+    return { maxMult: 16, midMult: 6, endMult: 3, attack: 0.06, Q: 0.6 }
+  if (suffix === "sus2" || suffix === "sus4")
+    return { maxMult: 12, midMult: 5, endMult: 2.8, attack: 0.09, Q: 0.5 }
+  // Major (default)
+  return { maxMult: 14, midMult: 5, endMult: 2.5, attack: 0.08, Q: 0.7 }
+}
+
+function playDefaultNote(ac, freq, startTime, dur, perNoteLevel, dest, suffix = "") {
+  const fp = getFilterParams(suffix)
   const filter = ac.createBiquadFilter()
   filter.type = "lowpass"
-  filter.Q.value = 0.7
-  const maxFreq = Math.min(freq * 14, 18000)
-  const midFreq = Math.max(freq * 5, 800)
-  const endFreq = Math.max(freq * 2.5, 400)
+  filter.Q.value = fp.Q
+  const maxFreq = Math.min(freq * fp.maxMult, 18000)
+  const midFreq = Math.max(freq * fp.midMult, 800)
+  const endFreq = Math.max(freq * fp.endMult, 400)
   filter.frequency.setValueAtTime(maxFreq, startTime)
-  filter.frequency.exponentialRampToValueAtTime(midFreq, startTime + 0.08)
+  filter.frequency.exponentialRampToValueAtTime(midFreq, startTime + fp.attack)
   filter.frequency.exponentialRampToValueAtTime(endFreq, startTime + Math.min(dur * 0.5, 1.5))
   filter.connect(dest)
 
@@ -186,6 +205,19 @@ export function buildSchedule(midiNotes, playMode, chordDurSec, beatSec) {
   }
 }
 
+// ── Humanization ─────────────────────────────────────────────────────────────
+// Micro-timing and velocity jitter to break the mechanical feel.
+
+function humanizeTime(t) {
+  // ±12ms jitter — subtle but perceptible
+  return t + (Math.random() - 0.5) * 0.024
+}
+
+function humanizeGain(g) {
+  // ±10% velocity variation
+  return g * (1 + (Math.random() - 0.5) * 0.2)
+}
+
 // ── AudioEngine ───────────────────────────────────────────────────────────────
 
 export class AudioEngine {
@@ -255,23 +287,33 @@ export class AudioEngine {
 
     const now      = startTime ?? ac.currentTime
     const rawNotes = buildChordMidi(chord.root, chord.intervals)
+    const suffix   = chord.suffix ?? chord.name?.replace(chord.root, "") ?? ""
     const schedule = buildSchedule(rawNotes, playMode, chordDurSec, beatSec)
 
     // Pre-load soundfont once (fast if already cached)
     const instrument = SF_NAMES[waveType] ? (await this.preload(waveType)) : null
 
+    // Should we humanize? Yes for patterns with multiple hits, no for single block
+    const shouldHumanize = schedule.length > 1
+
     for (const { notes, t, dur } of schedule) {
-      const at = now + t
+      const at = shouldHumanize ? Math.max(now, humanizeTime(now + t)) : now + t
 
       if (instrument) {
         // ── Soundfont ──
-        const gain = (intensity * 1.6) / Math.max(notes.length, 2)
-        notes.forEach(midi => instrument.play(midi, at, { duration: dur, gain }))
+        const baseGain = (intensity * 1.6) / Math.max(notes.length, 2)
+        notes.forEach(midi => {
+          const g = shouldHumanize ? humanizeGain(baseGain) : baseGain
+          instrument.play(midi, at, { duration: dur, gain: g })
+        })
 
       } else if (waveType === "default") {
-        // ── Default (harmonic) synth ──
-        const perNoteLevel = (intensity * 0.07) / Math.max(notes.length, 2)
-        notes.forEach(midi => playDefaultNote(ac, midiToFreq(midi), at, dur, perNoteLevel, dest))
+        // ── Default (harmonic) synth — now with chord-quality filter ──
+        const baseLevel = (intensity * 0.07) / Math.max(notes.length, 2)
+        notes.forEach(midi => {
+          const level = shouldHumanize ? humanizeGain(baseLevel) : baseLevel
+          playDefaultNote(ac, midiToFreq(midi), at, dur, level, dest, suffix)
+        })
 
       } else {
         // ── Oscillator fallback ──
